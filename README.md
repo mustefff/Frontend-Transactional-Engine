@@ -1,16 +1,48 @@
 # frontend_transactional_engine
 
-A new Flutter project.
+Prototype Flutter de la plateforme transactionnelle (front-end).  
+L’objectif actuel est de figer l’UX/UI et les transitions d’authentification en attendant l’API finale.
 
-## Getting Started
+## Architecture
 
-This project is a starting point for a Flutter application.
+- `lib/core`: éléments transverses (`AppRouter`).
+- `lib/features/auth`:
+  - `domain`: modèles métier (`UserProfile`).
+  - `data`: services mockés (`MockAuthService`).
+  - `application`: contrôleurs d’état (`AuthFlowController`).
+  - `presentation`: écrans d’authentification (`pages/`).
+- `lib/features/dashboard`: écran d’accueil wallet (`WalletOverviewScreen`) affichant solde, QR et historique.
 
-A few resources to get you started if this is your first Flutter project:
+La gestion d’état repose sur `provider` et un `ChangeNotifier` dédié à l’authentification. Les données sont simulées par un service mock pour isoler l’UI du backend.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Flux mockés
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+1. **Inscription** (`RegisterScreen`) : saisie du téléphone et envoi OTP simulé.
+2. **OTP** (`OtpVerificationScreen`) : code `1234` nécessaire pour poursuivre.
+3. **Profil** (`CompleteProfileScreen`) : capture des informations personnelles.
+4. **Code PIN** (`SetPinScreen`) : définition d’un PIN à 6 chiffres enregistré côté mock.
+5. **Connexion** (`LoginScreen`) : vérification du PIN stocké.
+
+Chaque étape gère les cas d’erreur, affiche un loader et propose un retour utilisateur cohérent.
+
+## Lancer le projet
+
+```bash
+flutter pub get
+flutter run
+```
+
+> Dépendances clés : `provider` (gestion d’état) et `qr_flutter` (affichage du QR code carte wallet).
+
+## Tests
+
+```bash
+flutter test
+```
+
+## Prochaines étapes suggérées
+
+- Brancher les appels API réels dans un repository dédié.
+- Ajouter un stockage sécurisé pour le PIN (`flutter_secure_storage`).
+- Mettre en place une internationalisation complète (`flutter_localizations`).
+- Étendre la couverture de tests (widgets + tests d’intégration).*** End Patch
