@@ -3,9 +3,112 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:frontend_transactional_engine/features/auth/application/auth_flow_controller.dart';
+import 'package:frontend_transactional_engine/services/api_service.dart';
+import 'package:frontend_transactional_engine/core/routing/app_router.dart';
 
-class WalletOverviewScreen extends StatelessWidget {
+class WalletOverviewScreen extends StatefulWidget {
   const WalletOverviewScreen({super.key});
+
+  @override
+  State<WalletOverviewScreen> createState() => _WalletOverviewScreenState();
+}
+
+class _WalletOverviewScreenState extends State<WalletOverviewScreen> {
+  Map<String, String?>? _userInfo;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+  }
+
+  Future<void> _loadUserInfo() async {
+    final userInfo = await ApiService.getUserInfo();
+    setState(() {
+      _userInfo = userInfo;
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _handleLogout() async {
+    // Afficher une boîte de dialogue de confirmation
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Déconnexion'),
+        content: const Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Déconnexion'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout != true) {
+      return;
+    }
+
+    // Afficher un indicateur de chargement
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      // Récupérer le userId depuis les informations utilisateur
+      final userId = _userInfo?['userId'];
+      
+      // Appeler l'API de déconnexion
+      final result = await ApiService.logout(userId: userId);
+      
+      if (!mounted) return;
+      
+      // Fermer le dialogue de chargement
+      Navigator.pop(context);
+      
+      if (result['success'] == true) {
+        // Rediriger vers l'écran de connexion/inscription
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRouter.register,
+          (route) => false,
+        );
+      } else {
+        // Même en cas d'erreur, rediriger car les données locales sont nettoyées
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRouter.register,
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      
+      // Fermer le dialogue de chargement
+      Navigator.pop(context);
+      
+      // Rediriger quand même car les données locales sont nettoyées
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRouter.register,
+        (route) => false,
+      );
+    }
+  }
 
   String _formatPhone(String phone) {
     if (phone.isEmpty) return '';
@@ -23,15 +126,19 @@ class WalletOverviewScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final authController = context.watch<AuthFlowController>();
 
-    final userFirstName = authController.profile?.firstName ?? 'Utilisateur';
-    final userLastName = authController.profile?.lastName ?? '';
-    final phoneNumberRaw =
-        authController.storedPhoneNumber ?? authController.phoneNumber ?? '';
+    // Récupérer les informations depuis ApiService
+    final prenom = _userInfo?['prenom'] ?? authController.profile?.firstName ?? 'Utilisateur';
+    final nom = _userInfo?['nom'] ?? authController.profile?.lastName ?? '';
+    final phoneNumberRaw = _userInfo?['telephone'] ??
+        authController.storedPhoneNumber ??
+        authController.phoneNumber ??
+        '';
     final phoneNumber = _formatPhone(phoneNumberRaw);
 
-    final greeting = userLastName.isNotEmpty
-        ? '$userFirstName $userLastName'
-        : userFirstName;
+    // Construire le message de salutation : "Bonjour [prenom] [nom]"
+    final greeting = nom.isNotEmpty
+        ? '$prenom $nom'
+        : prenom;
 
     final quickActions = [
       _QuickActionData(
@@ -82,6 +189,15 @@ class WalletOverviewScreen extends StatelessWidget {
         isDebit: false,
       ),
     ];
+
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF5F7FF),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FF),
@@ -198,19 +314,43 @@ class WalletOverviewScreen extends StatelessWidget {
             ],
           ),
         ),
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.18),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: const Center(
-            child: Icon(
-              Icons.notifications_none_rounded,
-              color: Colors.white,
+        Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.18),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.notifications_none_rounded,
+                  color: Colors.white,
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 12),
+            InkWell(
+              onTap: _handleLogout,
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.exit_to_app,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );

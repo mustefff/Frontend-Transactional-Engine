@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 
 import 'package:frontend_transactional_engine/core/routing/app_router.dart';
@@ -15,6 +16,16 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _phoneController = TextEditingController();
   bool _isPhoneValid = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Log au démarrage pour vérifier que le code s'exécute
+    debugPrint('═══════════════════════════════════════════════════════════');
+    debugPrint('🔵 [RegisterScreen] INIT - Écran d\'inscription chargé !');
+    debugPrint('═══════════════════════════════════════════════════════════');
+    print('🔵 [RegisterScreen] INIT - Écran d\'inscription chargé ! (print)');
+  }
 
   @override
   void dispose() {
@@ -287,34 +298,71 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           onPressed: (!_isPhoneValid || isLoading)
                               ? null
                               : () async {
+                                  // Feedback visuel immédiat
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Traitement en cours...'),
+                                      duration: Duration(seconds: 1),
+                                    ),
+                                  );
+                                  
                                   FocusScope.of(context).unfocus();
                                   final phone = _phoneController.text
                                       .trim()
                                       .replaceAll(RegExp(r'\s+'), '');
-                                  final success =
-                                      await authController.requestOtp(phone);
-
-                                  if (!mounted) return;
-
-                                  if (success) {
-                                    Navigator.pushNamed(
-                                      context,
-                                      AppRouter.otp,
-                                      arguments: OtpVerificationArgs(
-                                        phoneNumber: phone,
-                                        flowType: OtpFlowType.registration,
-                                      ),
-                                    );
-                                  } else if (authController.errorMessage !=
-                                      null) {
+                                  
+                                  print('═══════════════════════════════════════════════════════════');
+                                  print('🔵 [RegisterScreen] BOUTON CLIQUÉ !');
+                                  print('🔵 [RegisterScreen] Téléphone: $phone');
+                                  debugPrint('🔵 [RegisterScreen] Bouton cliqué - Téléphone: $phone');
+                                  
+                                  if (phone.isEmpty) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          authController.errorMessage!,
-                                        ),
+                                      const SnackBar(
+                                        content: Text('Veuillez entrer un numéro de téléphone'),
                                         backgroundColor: Colors.red,
                                       ),
                                     );
+                                    return;
+                                  }
+                                  
+                                  print('🔵 [RegisterScreen] Appel de authController.requestOtp...');
+                                  try {
+                                    final success = await authController.requestOtp(phone);
+                                    print('🔵 [RegisterScreen] Résultat: $success');
+                                    
+                                    if (!mounted) return;
+                                    
+                                    if (success) {
+                                      Navigator.pushNamed(
+                                        context,
+                                        AppRouter.otp,
+                                        arguments: OtpVerificationArgs(
+                                          phoneNumber: phone,
+                                          flowType: OtpFlowType.registration,
+                                        ),
+                                      );
+                                    } else if (authController.errorMessage != null) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(authController.errorMessage!),
+                                          backgroundColor: Colors.red,
+                                          duration: const Duration(seconds: 5),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e, stackTrace) {
+                                    print('❌ [RegisterScreen] Exception: $e');
+                                    print('❌ [RegisterScreen] StackTrace: $stackTrace');
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Erreur: ${e.toString()}'),
+                                          backgroundColor: Colors.red,
+                                          duration: const Duration(seconds: 5),
+                                        ),
+                                      );
+                                    }
                                   }
                                 },
                           style: ElevatedButton.styleFrom(

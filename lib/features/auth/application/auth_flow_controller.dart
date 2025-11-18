@@ -1,13 +1,22 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:frontend_transactional_engine/features/auth/data/mock_auth_service.dart';
+import 'package:frontend_transactional_engine/features/auth/data/real_auth_service.dart';
 import 'package:frontend_transactional_engine/features/auth/domain/user_profile.dart';
 
-class AuthFlowController extends ChangeNotifier {
-  AuthFlowController({required MockAuthService authService})
-      : _authService = authService;
+import '../data/auth_flow_exception.dart';
 
-  final MockAuthService _authService;
+class AuthFlowController extends ChangeNotifier {
+  AuthFlowController({
+    MockAuthService? mockAuthService,
+    RealAuthService? realAuthService,
+  }) : _authService = realAuthService ?? mockAuthService! {
+    if (realAuthService == null && mockAuthService == null) {
+      throw ArgumentError('Un service d\'authentification doit être fourni');
+    }
+  }
+
+  final dynamic _authService;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -36,10 +45,34 @@ class AuthFlowController extends ChangeNotifier {
   void clearError() => _setError(null);
 
   Future<bool> requestOtp(String phoneNumber) async {
+    print('🔵 [AuthFlowController] requestOtp appelé avec: $phoneNumber');
     _setLoading(true);
     _setError(null);
     try {
+      print('🔵 [AuthFlowController] Appel de _authService.sendOtp...');
       await _authService.sendOtp(phoneNumber: phoneNumber);
+      _phoneNumber = phoneNumber;
+      print('✅ [AuthFlowController] requestOtp réussi');
+      return true;
+    } on AuthFlowException catch (e) {
+      print('❌ [AuthFlowController] Erreur: ${e.message}');
+      _setError(e.message);
+      return false;
+    } catch (e, stackTrace) {
+      print('❌ [AuthFlowController] Exception inattendue: $e');
+      print('❌ [AuthFlowController] StackTrace: $stackTrace');
+      _setError('Erreur inattendue: ${e.toString()}');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> requestLoginOtp(String phoneNumber) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _authService.sendLoginOtp(phoneNumber: phoneNumber);
       _phoneNumber = phoneNumber;
       return true;
     } on AuthFlowException catch (e) {
@@ -105,6 +138,24 @@ class AuthFlowController extends ChangeNotifier {
     _setError(null);
     try {
       await _authService.loginWithPin(pin);
+      return true;
+    } on AuthFlowException catch (e) {
+      _setError(e.message);
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> login({
+    required String phoneNumber,
+    required String otp,
+    required String password,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _authService.login(phoneNumber: phoneNumber, otp: otp, password: password);
       return true;
     } on AuthFlowException catch (e) {
       _setError(e.message);

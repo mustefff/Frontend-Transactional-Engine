@@ -17,8 +17,18 @@ class AppRouter {
   static const loginPin = '/login-pin';
   static const dashboard = '/dashboard';
 
-  Route<dynamic>? onGenerateRoute(RouteSettings settings) {
-    switch (settings.name) {
+  Route<dynamic> onGenerateRoute(RouteSettings settings) {
+    // Vérifier que settings.name n'est pas null ou vide
+    final routeName = settings.name;
+    
+    // Si routeName est null ou vide, retourner la route d'inscription par défaut
+    if (routeName == null || routeName.isEmpty) {
+      return MaterialPageRoute(
+        builder: (_) => const RegisterScreen(),
+      );
+    }
+    
+    switch (routeName) {
       case register:
         return MaterialPageRoute(builder: (_) => const RegisterScreen());
       case otp:
@@ -52,8 +62,9 @@ class AppRouter {
           builder: (_) => const LoginScreen(),
         );
       case loginPin:
+        final otp = settings.arguments as String?;
         return MaterialPageRoute(
-          builder: (_) => const LoginPinScreen(),
+          builder: (_) => LoginPinScreen(otp: otp),
         );
       case dashboard:
         return MaterialPageRoute(

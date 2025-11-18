@@ -68,36 +68,93 @@ class _LoginScreenState extends State<LoginScreen> {
         _isLoading = true;
       });
       
-      // Formater le numéro de téléphone avec le préfixe +221 si nécessaire
-      String phone = _phoneController.text.trim();
-      if (!phone.startsWith('+')) {
-        if (phone.startsWith('221')) {
-          phone = '+$phone';
-        } else if (phone.startsWith('0')) {
-          phone = '+221${phone.substring(1)}';
-        } else {
+      try {
+        // Formater le numéro de téléphone avec le préfixe +221 si nécessaire
+        String phone = _phoneController.text.trim();
+        print('📱 [LOGIN] Numéro saisi: $phone');
+        
+        // Si le numéro contient déjà +221, on le garde tel quel
+        if (phone.contains('+221')) {
+          // Extraire juste le numéro après +221
+          phone = phone.replaceAll('+221', '').replaceAll(' ', '').replaceAll('-', '');
           phone = '+221$phone';
+        } else if (!phone.startsWith('+')) {
+          if (phone.startsWith('221')) {
+            phone = '+$phone';
+          } else if (phone.startsWith('0')) {
+            phone = '+221${phone.substring(1)}';
+          } else {
+            // Enlever les espaces et tirets
+            phone = phone.replaceAll(' ', '').replaceAll('-', '');
+            phone = '+221$phone';
+          }
         }
-      }
-      
-      // Appeler l'API pour envoyer le code OTP
-      final result = await ApiService.connexionOtp(phone);
-      
-      setState(() {
-        _isLoading = false;
-      });
-      
-      if (result['success'] == true) {
+        
+        print('📱 [LOGIN] Numéro formaté: $phone');
+        
+        // Appeler l'API pour envoyer le code OTP
+        final result = await ApiService.connexionOtp(phone);
+        
         setState(() {
-          _isStep2 = true;
-          _phoneNumber = phone;
+          _isLoading = false;
         });
-      } else {
+        
+        if (result['success'] == true) {
+          setState(() {
+            _isStep2 = true;
+            _phoneNumber = phone;
+          });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Code OTP envoyé avec succès ! Vérifiez vos messages.'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            // Afficher l'erreur dans un dialog pour plus de visibilité
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Text('Erreur'),
+                content: Text(result['error'] ?? 'Erreur lors de l\'envoi du code OTP'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('OK'),
+                  ),
+                ],
+              ),
+            );
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result['error'] ?? 'Erreur lors de l\'envoi du code OTP'),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 5),
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+        print('❌ [LOGIN] Exception: ${e.toString()}');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['error'] ?? 'Erreur lors de l\'envoi du code OTP'),
-              backgroundColor: Colors.red,
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('Erreur'),
+              content: Text('Une erreur est survenue: ${e.toString()}'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('OK'),
+                ),
+              ],
             ),
           );
         }

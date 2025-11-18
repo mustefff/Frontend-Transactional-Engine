@@ -87,9 +87,10 @@ class _SetPinScreenState extends State<SetPinScreen> {
 
     if (success) {
       authController.resetFlow();
+      // Rediriger vers le dashboard car l'utilisateur est maintenant authentifié
       Navigator.pushNamedAndRemoveUntil(
         context,
-        AppRouter.login,
+        AppRouter.dashboard,
         (route) => false,
       );
     } else if (authController.errorMessage != null) {

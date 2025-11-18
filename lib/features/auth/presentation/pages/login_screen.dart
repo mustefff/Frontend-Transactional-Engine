@@ -266,8 +266,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   final phone = _phoneController.text
                                       .trim()
                                       .replaceAll(RegExp(r'\s+'), '');
+                                  // Utiliser requestLoginOtp pour la connexion (pas requestOtp qui est pour l'inscription)
                                   final success =
-                                      await authController.requestOtp(phone);
+                                      await authController.requestLoginOtp(phone);
 
                                   if (!mounted) return;
 

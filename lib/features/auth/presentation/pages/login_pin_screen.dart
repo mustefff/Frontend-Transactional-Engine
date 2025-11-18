@@ -6,7 +6,9 @@ import 'package:frontend_transactional_engine/core/routing/app_router.dart';
 import 'package:frontend_transactional_engine/features/auth/application/auth_flow_controller.dart';
 
 class LoginPinScreen extends StatefulWidget {
-  const LoginPinScreen({super.key});
+  const LoginPinScreen({super.key, this.otp});
+
+  final String? otp;
 
   @override
   State<LoginPinScreen> createState() => _LoginPinScreenState();
@@ -210,8 +212,38 @@ class _LoginPinScreenState extends State<LoginPinScreen> {
                               : () async {
                                   FocusScope.of(context).unfocus();
                                   final pin = _pinController.text.trim();
-                                  final success =
-                                      await authController.loginWithPin(pin);
+                                  
+                                  // Pour la connexion, on utilise connexion() avec OTP + password
+                                  // L'OTP a été saisi dans OtpVerificationScreen
+                                  final phoneNumber = authController.phoneNumber ?? 
+                                      authController.storedPhoneNumber ?? '';
+                                  
+                                  if (phoneNumber.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Erreur: numéro de téléphone manquant'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  
+                                  final otp = widget.otp ?? '';
+                                  if (otp.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Erreur: code OTP manquant'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  
+                                  final success = await authController.login(
+                                    phoneNumber: phoneNumber,
+                                    otp: otp,
+                                    password: pin,
+                                  );
 
                                   if (!mounted) return;
 

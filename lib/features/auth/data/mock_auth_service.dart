@@ -1,15 +1,7 @@
 import 'dart:async';
 
 import 'package:frontend_transactional_engine/features/auth/domain/user_profile.dart';
-
-class AuthFlowException implements Exception {
-  AuthFlowException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
-}
+import 'package:frontend_transactional_engine/features/auth/data/auth_flow_exception.dart';
 
 class MockAuthService {
   String? _lastPhoneNumber;

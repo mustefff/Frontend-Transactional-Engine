@@ -295,8 +295,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             onPressed: isLoading || phoneNumber.isEmpty
                                 ? null
                                 : () async {
-                                    final success = await authController
-                                        .requestOtp(phoneNumber);
+                                    // Utiliser la bonne méthode selon le type de flux
+                                    final success = widget.flowType == OtpFlowType.login
+                                        ? await authController.requestLoginOtp(phoneNumber)
+                                        : await authController.requestOtp(phoneNumber);
                                     if (!mounted) return;
                                     final message = success
                                         ? 'Un nouveau code vous a été envoyé.'
@@ -352,24 +354,30 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                     return;
                                   }
 
+                                  // Pour la connexion, on ne valide pas l'OTP ici
+                                  // L'OTP sera validé avec le password dans LoginPinScreen
+                                  if (widget.flowType == OtpFlowType.login) {
+                                    // Sauvegarder l'OTP temporairement pour l'utiliser dans LoginPinScreen
+                                    // On passe directement à LoginPinScreen
+                                    Navigator.pushNamed(
+                                      context,
+                                      AppRouter.loginPin,
+                                      arguments: otp, // Passer l'OTP comme argument
+                                    );
+                                    return;
+                                  }
+
+                                  // Pour l'inscription, on valide l'OTP
                                   final success =
                                       await authController.verifyOtp(otp);
 
                                   if (!mounted) return;
 
                                   if (success) {
-                                    if (widget.flowType ==
-                                        OtpFlowType.registration) {
-                                      Navigator.pushNamed(
-                                        context,
-                                        AppRouter.completeProfile,
-                                      );
-                                    } else {
-                                      Navigator.pushNamed(
-                                        context,
-                                        AppRouter.loginPin,
-                                      );
-                                    }
+                                    Navigator.pushNamed(
+                                      context,
+                                      AppRouter.completeProfile,
+                                    );
                                   } else if (authController.errorMessage !=
                                       null) {
                                     ScaffoldMessenger.of(context).showSnackBar(

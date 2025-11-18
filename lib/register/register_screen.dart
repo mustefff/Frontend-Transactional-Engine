@@ -15,6 +15,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Test de connexion au démarrage
+    _testBackendConnection();
+  }
+  
+  Future<void> _testBackendConnection() async {
+    debugPrint('🔍 [FRONTEND] Test de connexion au backend au démarrage...');
+    final isConnected = await ApiService.testConnection();
+    debugPrint('🔍 [FRONTEND] Backend connecté: $isConnected');
+    if (!isConnected) {
+      debugPrint('⚠️ [FRONTEND] ATTENTION: Le backend ne répond pas !');
+    }
+  }
+
+  @override
   void dispose() {
     _phoneController.dispose();
     super.dispose();
@@ -184,25 +200,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       height: 60,
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : () async {
+                          debugPrint('═══════════════════════════════════════════════════════════');
+                          debugPrint('🔵 [FRONTEND] Bouton "S\'inscrire" cliqué !');
+                          debugPrint('🔵 [FRONTEND] Texte du champ téléphone: "${_phoneController.text}"');
+                          debugPrint('🔵 [FRONTEND] Champ vide ? ${_phoneController.text.isEmpty}');
+                          debugPrint('═══════════════════════════════════════════════════════════');
+                          
                           if (_phoneController.text.isNotEmpty) {
+                            debugPrint('🔵 [FRONTEND] Le champ n\'est pas vide, on continue...');
+                            
                             setState(() {
                               _isLoading = true;
                             });
                             
-                            // Formater le numéro de téléphone avec le préfixe +221 si nécessaire
-                            String phone = _phoneController.text.trim();
-                            if (!phone.startsWith('+')) {
-                              if (phone.startsWith('221')) {
-                                phone = '+$phone';
-                              } else if (phone.startsWith('0')) {
-                                phone = '+221${phone.substring(1)}';
-                              } else {
-                                phone = '+221$phone';
-                              }
-                            }
+                            // Utiliser la fonction de formatage centralisée du service API
+                            String phone = ApiService.formatPhoneNumber(_phoneController.text);
                             
-                            // Appeler l'API étape 1
+                            debugPrint('📱 [FRONTEND] Numéro original: "${_phoneController.text}"');
+                            debugPrint('📱 [FRONTEND] Numéro formaté: $phone');
+                            debugPrint('📱 [FRONTEND] Appel de ApiService.inscriptionEtape1...');
+                            
+                            // Appeler l'API étape 1 (la fonction formatera automatiquement le numéro)
                             final result = await ApiService.inscriptionEtape1(phone);
+                            
+                            debugPrint('📱 [FRONTEND] Résultat reçu de l\'API: $result');
                             
                             setState(() {
                               _isLoading = false;
