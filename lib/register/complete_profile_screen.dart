@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'set_pin_screen.dart';
+import '../services/api_service.dart';
 
 class CompleteProfileScreen extends StatefulWidget {
-  const CompleteProfileScreen({super.key});
+  final String phoneNumber;
+  
+  const CompleteProfileScreen({
+    super.key,
+    required this.phoneNumber,
+  });
 
   @override
   State<CompleteProfileScreen> createState() => _CompleteProfileScreenState();
@@ -14,6 +20,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   final TextEditingController _prenomController = TextEditingController();
   final TextEditingController _ninController = TextEditingController();
   final TextEditingController _dateNaissanceController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -33,10 +40,20 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     );
     if (picked != null) {
       setState(() {
+        // Format pour l'affichage : DD-MM-YYYY
         _dateNaissanceController.text =
             '${picked.day.toString().padLeft(2, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.year}';
       });
     }
+  }
+  
+  // Convertir la date du format DD-MM-YYYY vers YYYY-MM-DD pour l'API
+  String _formatDateForApi(String dateStr) {
+    final parts = dateStr.split('-');
+    if (parts.length == 3) {
+      return '${parts[2]}-${parts[1]}-${parts[0]}';
+    }
+    return dateStr;
   }
 
   @override
@@ -284,27 +301,65 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                     width: double.infinity,
                     height: 60,
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: _isLoading ? null : () async {
                         // Vérifier que tous les champs sont remplis
                         if (_nomController.text.isNotEmpty &&
                             _prenomController.text.isNotEmpty &&
                             _ninController.text.isNotEmpty &&
                             _dateNaissanceController.text.isNotEmpty) {
-                          // Navigation vers l'écran de définition du code
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => SetPinScreen(),
-                            ),
+                          setState(() {
+                            _isLoading = true;
+                          });
+                          
+                          // Convertir la date au format YYYY-MM-DD
+                          final dateNaissance = _formatDateForApi(_dateNaissanceController.text);
+                          
+                          // Appeler l'API étape 2
+                          final result = await ApiService.inscriptionEtape2(
+                            telephone: widget.phoneNumber,
+                            nom: _nomController.text.trim(),
+                            prenom: _prenomController.text.trim(),
+                            nin: _ninController.text.trim(),
+                            dateNaissance: dateNaissance,
                           );
+                          
+                          setState(() {
+                            _isLoading = false;
+                          });
+                          
+                          if (result['success'] == true) {
+                            // Navigation vers l'écran de définition du code
+                            if (mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => SetPinScreen(
+                                    phoneNumber: widget.phoneNumber,
+                                  ),
+                                ),
+                              );
+                            }
+                          } else {
+                            // Afficher l'erreur
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(result['error'] ?? 'Erreur lors de l\'enregistrement'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
                         } else {
                           // Afficher un message d'erreur
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Veuillez remplir tous les champs'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Veuillez remplir tous les champs'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
                         }
                       },
                       style: ElevatedButton.styleFrom(
@@ -314,24 +369,33 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                         ),
                         elevation: 0,
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Terminer',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF7B5FFF),
+                      child: _isLoading
+                          ? SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7B5FFF)),
+                              ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Terminer',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF7B5FFF),
+                                  ),
+                                ),
+                                SizedBox(width: 10),
+                                Icon(
+                                  Icons.check,
+                                  color: Color(0xFF7B5FFF),
+                                ),
+                              ],
                             ),
-                          ),
-                          SizedBox(width: 10),
-                          Icon(
-                            Icons.check,
-                            color: Color(0xFF7B5FFF),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                   

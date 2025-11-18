@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'otp_verification_screen.dart';
+import '../services/api_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -11,6 +12,7 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _phoneController = TextEditingController();
   bool _isPhoneValid = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -181,17 +183,54 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       width: double.infinity,
                       height: 60,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // Navigation vers l'écran OTP
+                        onPressed: _isLoading ? null : () async {
                           if (_phoneController.text.isNotEmpty) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => OtpVerificationScreen(
-                                  phoneNumber: _phoneController.text,
-                                ),
-                              ),
-                            );
+                            setState(() {
+                              _isLoading = true;
+                            });
+                            
+                            // Formater le numéro de téléphone avec le préfixe +221 si nécessaire
+                            String phone = _phoneController.text.trim();
+                            if (!phone.startsWith('+')) {
+                              if (phone.startsWith('221')) {
+                                phone = '+$phone';
+                              } else if (phone.startsWith('0')) {
+                                phone = '+221${phone.substring(1)}';
+                              } else {
+                                phone = '+221$phone';
+                              }
+                            }
+                            
+                            // Appeler l'API étape 1
+                            final result = await ApiService.inscriptionEtape1(phone);
+                            
+                            setState(() {
+                              _isLoading = false;
+                            });
+                            
+                            if (result['success'] == true) {
+                              // Navigation vers l'écran OTP
+                              if (mounted) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => OtpVerificationScreen(
+                                      phoneNumber: phone,
+                                    ),
+                                  ),
+                                );
+                              }
+                            } else {
+                              // Afficher l'erreur
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(result['error'] ?? 'Erreur lors de l\'envoi du code OTP'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -201,24 +240,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           elevation: 0,
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'S\'inscrire',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                        child: _isLoading
+                            ? SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'S\'inscrire',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  SizedBox(width: 10),
+                                  Icon(
+                                    Icons.arrow_forward,
+                                    color: Colors.white,
+                                  ),
+                                ],
                               ),
-                            ),
-                            SizedBox(width: 10),
-                            Icon(
-                              Icons.arrow_forward,
-                              color: Colors.white,
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                     SizedBox(height: 40),

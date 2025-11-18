@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'complete_profile_screen.dart';
+import '../services/api_service.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String phoneNumber;
@@ -23,6 +24,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     4,
     (index) => FocusNode(),
   );
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -263,9 +265,35 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     ),
                     SizedBox(width: 5),
                     TextButton(
-                      onPressed: () {
-                        // Action pour renvoyer l'OTP
-                        print('Renvoyer OTP');
+                      onPressed: _isLoading ? null : () async {
+                        setState(() {
+                          _isLoading = true;
+                        });
+                        
+                        // Renvoyer le code OTP
+                        final result = await ApiService.inscriptionEtape1(widget.phoneNumber);
+                        
+                        setState(() {
+                          _isLoading = false;
+                        });
+                        
+                        if (mounted) {
+                          if (result['success'] == true) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Code OTP renvoyé avec succès'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(result['error'] ?? 'Erreur lors du renvoi du code OTP'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
                       },
                       child: Text(
                         'Renvoyer',
@@ -286,24 +314,56 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                   width: double.infinity,
                   height: 60,
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: _isLoading ? null : () async {
                       String otp = _getOtpCode();
                       // Vérifier si l'OTP est complet
                       if (otp.length == 4) {
-                        // Navigation vers complément d'inscription
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => CompleteProfileScreen(),
-                          ),
+                        setState(() {
+                          _isLoading = true;
+                        });
+                        
+                        // Valider le code OTP
+                        final result = await ApiService.inscriptionEtape1Validation(
+                          widget.phoneNumber,
+                          otp,
                         );
+                        
+                        setState(() {
+                          _isLoading = false;
+                        });
+                        
+                        if (result['success'] == true) {
+                          // Navigation vers complément d'inscription
+                          if (mounted) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CompleteProfileScreen(
+                                  phoneNumber: widget.phoneNumber,
+                                ),
+                              ),
+                            );
+                          }
+                        } else {
+                          // Afficher l'erreur
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(result['error'] ?? 'Code OTP invalide ou expiré'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
                       } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Veuillez entrer le code OTP complet'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Veuillez entrer le code OTP complet'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -313,24 +373,33 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                       ),
                       elevation: 0,
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Vérifier',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
+                    child: _isLoading
+                        ? SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Vérifier',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(width: 10),
+                              Icon(
+                                Icons.arrow_forward,
+                                color: Colors.white,
+                              ),
+                            ],
                           ),
-                        ),
-                        SizedBox(width: 10),
-                        Icon(
-                          Icons.arrow_forward,
-                          color: Colors.white,
-                        ),
-                      ],
-                    ),
                   ),
                 ),
                 

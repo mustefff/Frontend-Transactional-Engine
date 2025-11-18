@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
+import '../services/api_service.dart';
 
 class SetPinScreen extends StatefulWidget {
-  const SetPinScreen({super.key});
+  final String phoneNumber;
+  
+  const SetPinScreen({
+    super.key,
+    required this.phoneNumber,
+  });
 
   @override
   State<SetPinScreen> createState() => _SetPinScreenState();
@@ -12,6 +18,7 @@ class _SetPinScreenState extends State<SetPinScreen> {
   String _firstPin = '';
   String _confirmPin = '';
   bool _isConfirming = false;
+  bool _isLoading = false;
 
   void _onNumberPressed(String number) {
     setState(() {
@@ -53,24 +60,61 @@ class _SetPinScreenState extends State<SetPinScreen> {
     });
   }
 
-  void _verifyPins() {
+  void _verifyPins() async {
     if (_firstPin == _confirmPin) {
-      // Les codes correspondent, naviguer vers la connexion
-      Future.delayed(Duration(milliseconds: 500), () {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => LoginScreen()),
-          (route) => false,
-        );
+      // Les codes correspondent, finaliser l'inscription
+      setState(() {
+        _isLoading = true;
       });
+      
+      // Appeler l'API étape 3
+      final result = await ApiService.inscriptionEtape3(
+        telephone: widget.phoneNumber,
+        password: _firstPin,
+        confirmPassword: _confirmPin,
+      );
+      
+      setState(() {
+        _isLoading = false;
+      });
+      
+      if (result['success'] == true) {
+        // Inscription réussie, naviguer vers la connexion
+        if (mounted) {
+          Future.delayed(Duration(milliseconds: 500), () {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => LoginScreen()),
+              (route) => false,
+            );
+          });
+        }
+      } else {
+        // Afficher l'erreur
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['error'] ?? 'Erreur lors de la finalisation de l\'inscription'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() {
+            _firstPin = '';
+            _confirmPin = '';
+            _isConfirming = false;
+          });
+        }
+      }
     } else {
       // Les codes ne correspondent pas, afficher une erreur et recommencer
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Les codes ne correspondent pas. Veuillez réessayer.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Les codes ne correspondent pas. Veuillez réessayer.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
       setState(() {
         _firstPin = '';
         _confirmPin = '';
@@ -165,6 +209,14 @@ class _SetPinScreenState extends State<SetPinScreen> {
             
             // Points pour le code
             _buildPinDots(_isConfirming ? _confirmPin : _firstPin),
+            
+            if (_isLoading)
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6B3FE8)),
+                ),
+              ),
             
             Spacer(),
             
