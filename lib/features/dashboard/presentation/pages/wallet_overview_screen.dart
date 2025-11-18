@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import 'package:frontend_transactional_engine/core/routing/app_router.dart';
 import 'package:frontend_transactional_engine/features/auth/application/auth_flow_controller.dart';
 
 class WalletOverviewScreen extends StatelessWidget {
@@ -592,41 +593,49 @@ class _QuickActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            color: action.background.withOpacity(0.13),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Center(
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: action.background,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(
-                action.icon,
-                color: Colors.white,
-                size: 22,
+    return InkWell(
+      onTap: () {
+        if (action.label == 'Transfert') {
+          Navigator.pushNamed(context, AppRouter.transfer);
+        }
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Column(
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: action.background.withOpacity(0.13),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Center(
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: action.background,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  action.icon,
+                  color: Colors.white,
+                  size: 22,
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          action.label,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF40404E),
+          const SizedBox(height: 10),
+          Text(
+            action.label,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF40404E),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

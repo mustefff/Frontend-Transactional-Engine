@@ -7,6 +7,7 @@ import 'package:frontend_transactional_engine/features/auth/presentation/pages/o
 import 'package:frontend_transactional_engine/features/auth/presentation/pages/register_screen.dart';
 import 'package:frontend_transactional_engine/features/auth/presentation/pages/set_pin_screen.dart';
 import 'package:frontend_transactional_engine/features/dashboard/presentation/pages/wallet_overview_screen.dart';
+import 'package:frontend_transactional_engine/features/transfer/presentation/pages/transfer_screen.dart';
 
 class AppRouter {
   static const register = '/register';
@@ -16,6 +17,7 @@ class AppRouter {
   static const login = '/login';
   static const loginPin = '/login-pin';
   static const dashboard = '/dashboard';
+  static const transfer = '/transfer';
 
   Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -58,6 +60,10 @@ class AppRouter {
       case dashboard:
         return MaterialPageRoute(
           builder: (_) => const WalletOverviewScreen(),
+        );
+      case transfer:
+        return MaterialPageRoute(
+          builder: (_) => const TransferScreen(),
         );
       default:
         return MaterialPageRoute(
