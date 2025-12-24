@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagramme de Cas d'Utilisation - Système de Paiement Mobile</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        h2 {
+            color: #764ba2;
+            text-align: center;
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+        .diagram-section {
+            margin: 40px 0;
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+        }
+        .section-title {
+            color: #667eea;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        .mermaid {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .legend {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+            border-left: 4px solid #667eea;
+        }
+        .legend h3 {
+            color: #667eea;
+            margin-top: 0;
+        }
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .legend-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .legend-item strong {
+            color: #667eea;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .actors-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .actor-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #667eea;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .actor-card h4 {
+            color: #667eea;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .actor-card ul {
+            margin: 10px 0 0 0;
+            padding-left: 20px;
+        }
+        .actor-card li {
+            margin-bottom: 5px;
+            color: #495057;
+            font-size: 0.9em;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 Diagramme de Cas d'Utilisation</h1>
+        <h2>Système de Paiement Mobile - Équipe 4</h2>
+        
+        <!-- Acteurs -->
+        <div class="diagram-section">
+            <div class="section-title">👥 Acteurs du Système</div>
+            <div class="actors-list">
+                <div class="actor-card">
+                    <h4>👤 Client</h4>
+                    <p><strong>Description :</strong> Utilisateur final de l'application mobile</p>
+                    <p><strong>Rôle :</strong></p>
+                    <ul>
+                        <li>S'inscrire et se connecter</li>
+                        <li>Effectuer des paiements</li>
+                        <li>Consulter son solde</li>
+                        <li>Acheter des produits</li>
+                    </ul>
+                </div>
+                
+                <div class="actor-card">
+                    <h4>🏪 Marchand</h4>
+                    <p><strong>Description :</strong> Commerçant qui accepte les paiements</p>
+                    <p><strong>Rôle :</strong></p>
+                    <ul>
+                        <li>Générer des QR Codes</li>
+                        <li>Recevoir des paiements</li>
+                        <li>Consulter ses transactions</li>
+                        <li>Gérer son compte marchand</li>
+                    </ul>
+                </div>
+                
+                <div class="actor-card">
+                    <h4>🛒 Vendeur E-commerce</h4>
+                    <p><strong>Description :</strong> Vendeur sur la plateforme e-commerce</p>
+                    <p><strong>Rôle :</strong></p>
+                    <ul>
+                        <li>Gérer les produits</li>
+                        <li>Traiter les commandes</li>
+                        <li>Gérer les stocks</li>
+                        <li>Expédier les produits</li>
+                    </ul>
+                </div>
+                
+                <div class="actor-card">
+                    <h4>👨‍💼 Administrateur</h4>
+                    <p><strong>Description :</strong> Gestionnaire du système</p>
+                    <p><strong>Rôle :</strong></p>
+                    <ul>
+                        <li>Gérer les utilisateurs</li>
+                        <li>Superviser les transactions</li>
+                        <li>Gérer les litiges</li>
+                        <li>Configurer le système</li>
+                    </ul>
+                </div>
+                
+                <div class="actor-card">
+                    <h4>📧 Système de Notification</h4>
+                    <p><strong>Description :</strong> Service externe (Équipe 3)</p>
+                    <p><strong>Rôle :</strong></p>
+                    <ul>
+                        <li>Envoyer des SMS</li>
+                        <li>Envoyer des emails</li>
+                        <li>Envoyer des OTP</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Use Case Diagram Principal -->
+        <div class="diagram-section">
+            <div class="section-title">🎯 Vue d'Ensemble - Tous les Cas d'Utilisation</div>
+            <div class="mermaid">
+graph TB
+    subgraph "Système de Paiement Mobile"
+        subgraph "Module Authentification"
+            UC1[S'inscrire avec OTP]
+            UC2[Se connecter avec PIN]
+            UC3[Réinitialiser PIN]
+            UC4[Gérer profil utilisateur]
+        end
+        
+        subgraph "Module Paiement Marchand"
+            UC5[Payer chez un marchand]
+            UC6[Scanner QR Code]
+            UC7[Générer QR Code marchand]
+            UC8[Consulter historique paiements]
+        end
+        
+        subgraph "Module E-commerce"
+            UC9[Parcourir catalogue]
+            UC10[Ajouter au panier]
+            UC11[Passer commande]
+            UC12[Payer commande]
+            UC13[Suivre livraison]
+        end
+        
+        subgraph "Module Transfert"
+            UC14[Effectuer transfert P2P]
+            UC15[Consulter solde]
+            UC16[Consulter historique transferts]
+        end
+        
+        subgraph "Module Gestion"
+            UC17[Gérer compte marchand]
+            UC18[Consulter rapports]
+            UC19[Gérer produits]
+            UC20[Gérer stocks]
+        end
+    end
+    
+    Client((Client))
+    Marchand((Marchand))
+    Vendeur((Vendeur<br/>E-commerce))
+    Admin((Administrateur))
+    SysNotif((Système<br/>Notification))
+    
+    Client --> UC1
+    Client --> UC2
+    Client --> UC3
+    Client --> UC4
+    Client --> UC5
+    Client --> UC6
+    Client --> UC9
+    Client --> UC10
+    Client --> UC11
+    Client --> UC12
+    Client --> UC13
+    Client --> UC14
+    Client --> UC15
+    Client --> UC16
+    
+    Marchand --> UC7
+    Marchand --> UC8
+    Marchand --> UC17
+    Marchand --> UC18
+    
+    Vendeur --> UC19
+    Vendeur --> UC20
+    Vendeur --> UC18
+    
+    Admin --> UC4
+    Admin --> UC17
+    Admin --> UC18
+    
+    UC1 -.->|envoie OTP| SysNotif
+    UC5 -.->|notification| SysNotif
+    UC11 -.->|confirmation| SysNotif
+    UC12 -.->|notification| SysNotif
+    UC14 -.->|notification| SysNotif
+    
+    UC6 -.->|inclut| UC5
+    UC11 -.->|inclut| UC12
+    UC5 -.->|étend| UC15
+    UC14 -.->|étend| UC15
+    
+    style UC1 fill:#e3f2fd
+    style UC2 fill:#e3f2fd
+    style UC3 fill:#e3f2fd
+    style UC4 fill:#e3f2fd
+    style UC5 fill:#fff3e0
+    style UC6 fill:#fff3e0
+    style UC7 fill:#fff3e0
+    style UC8 fill:#fff3e0
+    style UC9 fill:#e8f5e9
+    style UC10 fill:#e8f5e9
+    style UC11 fill:#e8f5e9
+    style UC12 fill:#e8f5e9
+    style UC13 fill:#e8f5e9
+    style UC14 fill:#f3e5f5
+    style UC15 fill:#f3e5f5
+    style UC16 fill:#f3e5f5
+    style UC17 fill:#fce4ec
+    style UC18 fill:#fce4ec
+    style UC19 fill:#fce4ec
+    style UC20 fill:#fce4ec
+            </div>
+        </div>
+        
+        <!-- Use Case: Authentification -->
+        <div class="diagram-section">
+            <div class="section-title">🔐 Module Authentification</div>
+            <div class="mermaid">
+graph LR
+    Client((Client))
+    SysNotif((Système<br/>Notification))
+    
+    subgraph "AUTH-SERVICE"
+        UC1[S'inscrire avec OTP]
+        UC2[Se connecter avec PIN]
+        UC3[Réinitialiser PIN]
+        UC4[Gérer profil utilisateur]
+        UC1_1[Demander OTP]
+        UC1_2[Vérifier OTP]
+        UC1_3[Définir PIN]
+        UC2_1[Vérifier identité]
+        UC2_2[Générer JWT Token]
+    end
+    
+    Client --> UC1
+    Client --> UC2
+    Client --> UC3
+    Client --> UC4
+    
+    UC1 -.->|inclut| UC1_1
+    UC1 -.->|inclut| UC1_2
+    UC1 -.->|inclut| UC1_3
+    UC1_1 -.->|envoie SMS| SysNotif
+    
+    UC2 -.->|inclut| UC2_1
+    UC2 -.->|inclut| UC2_2
+    
+    UC3 -.->|inclut| UC1_1
+    UC3 -.->|inclut| UC1_2
+    
+    style UC1 fill:#e3f2fd
+    style UC2 fill:#e3f2fd
+    style UC3 fill:#e3f2fd
+    style UC4 fill:#e3f2fd
+    style UC1_1 fill:#bbdefb
+    style UC1_2 fill:#bbdefb
+    style UC1_3 fill:#bbdefb
+    style UC2_1 fill:#bbdefb
+    style UC2_2 fill:#bbdefb
+            </div>
+        </div>
+        
+        <!-- Use Case: Paiement Marchand -->
+        <div class="diagram-section">
+            <div class="section-title">🏪 Module Paiement Marchand</div>
+            <div class="mermaid">
+graph LR
+    Client((Client))
+    Marchand((Marchand))
+    SysNotif((Système<br/>Notification))
+    TRX((TRX-ENGINE))
+    
+    subgraph "MERCHANT-PAYMENT-SERVICE"
+        UC5[Payer chez un marchand]
+        UC6[Scanner QR Code]
+        UC7[Générer QR Code marchand]
+        UC8[Consulter historique paiements]
+        UC5_1[Vérifier solde]
+        UC5_2[Effectuer transaction]
+        UC5_3[Confirmer paiement]
+    end
+    
+    Client --> UC5
+    Client --> UC6
+    Marchand --> UC7
+    Marchand --> UC8
+    Client --> UC8
+    
+    UC6 -.->|inclut| UC5
+    UC5 -.->|inclut| UC5_1
+    UC5 -.->|inclut| UC5_2
+    UC5 -.->|inclut| UC5_3
+    
+    UC5_1 -.->|vérifie| TRX
+    UC5_2 -.->|exécute| TRX
+    UC5_3 -.->|notifie| SysNotif
+    
+    style UC5 fill:#fff3e0
+    style UC6 fill:#fff3e0
+    style UC7 fill:#fff3e0
+    style UC8 fill:#fff3e0
+    style UC5_1 fill:#ffe0b2
+    style UC5_2 fill:#ffe0b2
+    style UC5_3 fill:#ffe0b2
+            </div>
+        </div>
+        
+        <!-- Use Case: E-commerce -->
+        <div class="diagram-section">
+            <div class="section-title">🛒 Module E-commerce</div>
+            <div class="mermaid">
+graph LR
+    Client((Client))
+    Vendeur((Vendeur<br/>E-commerce))
+    SysNotif((Système<br/>Notification))
+    TRX((TRX-ENGINE))
+    
+    subgraph "ECOM-SERVICE"
+        UC9[Parcourir catalogue]
+        UC10[Ajouter au panier]
+        UC11[Passer commande]
+        UC12[Payer commande]
+        UC13[Suivre livraison]
+        UC19[Gérer produits]
+        UC20[Gérer stocks]
+        UC11_1[Vérifier stock]
+        UC11_2[Calculer total]
+        UC12_1[Vérifier solde]
+        UC12_2[Effectuer paiement]
+    end
+    
+    Client --> UC9
+    Client --> UC10
+    Client --> UC11
+    Client --> UC12
+    Client --> UC13
+    Vendeur --> UC19
+    Vendeur --> UC20
+    
+    UC10 -.->|étend| UC9
+    UC11 -.->|inclut| UC11_1
+    UC11 -.->|inclut| UC11_2
+    UC11 -.->|inclut| UC12
+    
+    UC12 -.->|inclut| UC12_1
+    UC12 -.->|inclut| UC12_2
+    
+    UC12_1 -.->|vérifie| TRX
+    UC12_2 -.->|exécute| TRX
+    UC12 -.->|notifie| SysNotif
+    UC13 -.->|notifie| SysNotif
+    
+    style UC9 fill:#e8f5e9
+    style UC10 fill:#e8f5e9
+    style UC11 fill:#e8f5e9
+    style UC12 fill:#e8f5e9
+    style UC13 fill:#e8f5e9
+    style UC19 fill:#e8f5e9
+    style UC20 fill:#e8f5e9
+    style UC11_1 fill:#c8e6c9
+    style UC11_2 fill:#c8e6c9
+    style UC12_1 fill:#c8e6c9
+    style UC12_2 fill:#c8e6c9
+            </div>
+        </div>
+        
+        <!-- Use Case: Transfert P2P -->
+        <div class="diagram-section">
+            <div class="section-title">💰 Module Transfert P2P</div>
+            <div class="mermaid">
+graph LR
+    Client((Client))
+    SysNotif((Système<br/>Notification))
+    
+    subgraph "TRX-ENGINE"
+        UC14[Effectuer transfert P2P]
+        UC15[Consulter solde]
+        UC16[Consulter historique transferts]
+        UC14_1[Vérifier solde]
+        UC14_2[Vérifier destinataire]
+        UC14_3[Débiter expéditeur]
+        UC14_4[Créditer destinataire]
+        UC14_5[Confirmer transfert]
+    end
+    
+    Client --> UC14
+    Client --> UC15
+    Client --> UC16
+    
+    UC14 -.->|inclut| UC14_1
+    UC14 -.->|inclut| UC14_2
+    UC14 -.->|inclut| UC14_3
+    UC14 -.->|inclut| UC14_4
+    UC14 -.->|inclut| UC14_5
+    
+    UC14_5 -.->|notifie| SysNotif
+    UC14 -.->|étend| UC15
+    
+    style UC14 fill:#f3e5f5
+    style UC15 fill:#f3e5f5
+    style UC16 fill:#f3e5f5
+    style UC14_1 fill:#e1bee7
+    style UC14_2 fill:#e1bee7
+    style UC14_3 fill:#e1bee7
+    style UC14_4 fill:#e1bee7
+    style UC14_5 fill:#e1bee7
+            </div>
+        </div>
+        
+        <!-- Légende -->
+        <div class="legend">
+            <h3>📋 Légende des Relations</h3>
+            <div class="legend-grid">
+                <div class="legend-item">
+                    <strong>Association (→)</strong>
+                    Relation directe entre un acteur et un cas d'utilisation.<br>
+                    Exemple : Client → S'inscrire
+                </div>
+                <div class="legend-item">
+                    <strong>Inclusion (-.-> inclut)</strong>
+                    Un cas d'utilisation en inclut obligatoirement un autre.<br>
+                    Exemple : Passer commande inclut Payer commande
+                </div>
+                <div class="legend-item">
+                    <strong>Extension (-.-> étend)</strong>
+                    Un cas d'utilisation peut en étendre un autre (optionnel).<br>
+                    Exemple : Ajouter au panier étend Parcourir catalogue
+                </div>
+                <div class="legend-item">
+                    <strong>Dépendance (-.->)</strong>
+                    Interaction avec un système externe ou un autre service.<br>
+                    Exemple : Inscription -.-> Système de Notification
+                </div>
+            </div>
+        </div>
+        
+        <!-- Résumé des Cas d'Utilisation -->
+        <div class="legend">
+            <h3>📊 Résumé des Cas d'Utilisation par Module</h3>
+            <div class="legend-grid">
+                <div class="legend-item" style="border-left-color: #2196f3;">
+                    <strong>🔐 Authentification (4 UC)</strong>
+                    <ul>
+                        <li>S'inscrire avec OTP</li>
+                        <li>Se connecter avec PIN</li>
+                        <li>Réinitialiser PIN</li>
+                        <li>Gérer profil utilisateur</li>
+                    </ul>
+                </div>
+                <div class="legend-item" style="border-left-color: #ff9800;">
+                    <strong>🏪 Paiement Marchand (4 UC)</strong>
+                    <ul>
+                        <li>Payer chez un marchand</li>
+                        <li>Scanner QR Code</li>
+                        <li>Générer QR Code marchand</li>
+                        <li>Consulter historique paiements</li>
+                    </ul>
+                </div>
+                <div class="legend-item" style="border-left-color: #4caf50;">
+                    <strong>🛒 E-commerce (7 UC)</strong>
+                    <ul>
+                        <li>Parcourir catalogue</li>
+                        <li>Ajouter au panier</li>
+                        <li>Passer commande</li>
+                        <li>Payer commande</li>
+                        <li>Suivre livraison</li>
+                        <li>Gérer produits</li>
+                        <li>Gérer stocks</li>
+                    </ul>
+                </div>
+                <div class="legend-item" style="border-left-color: #9c27b0;">
+                    <strong>💰 Transfert P2P (3 UC)</strong>
+                    <ul>
+                        <li>Effectuer transfert P2P</li>
+                        <li>Consulter solde</li>
+                        <li>Consulter historique transferts</li>
+                    </ul>
+                </div>
+                <div class="legend-item" style="border-left-color: #e91e63;">
+                    <strong>👨‍💼 Gestion (2 UC)</strong>
+                    <ul>
+                        <li>Gérer compte marchand</li>
+                        <li>Consulter rapports</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>🏗️ Diagramme de Cas d'Utilisation - Équipe 4 - Système de Paiement Mobile</p>
+            <p><strong>Total : 20 cas d'utilisation</strong> répartis sur 5 modules</p>
+            <p>Généré le 23 Novembre 2025</p>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+    </script>
+</body>
+</html>

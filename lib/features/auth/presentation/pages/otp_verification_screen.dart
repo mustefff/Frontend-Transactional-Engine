@@ -33,12 +33,12 @@ class OtpVerificationScreen extends StatefulWidget {
 
 class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   final List<TextEditingController> _otpControllers = List.generate(
-    4,
+    6,
     (index) => TextEditingController(),
   );
 
   final List<FocusNode> _focusNodes = List.generate(
-    4,
+    6,
     (index) => FocusNode(),
   );
 
@@ -217,7 +217,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               ),
                               const SizedBox(height: 6),
                               const Text(
-                                'Entrez le code à 4 chiffres reçu par SMS.',
+                                'Entrez le code à 6 chiffres reçu par SMS.',
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: Color(0xFF70738F),
@@ -244,9 +244,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: List.generate(
-                          4,
+                          6,
                           (index) => SizedBox(
-                            width: 64,
+                            width: 48,
                             child: TextField(
                               controller: _otpControllers[index],
                               focusNode: _focusNodes[index],
@@ -340,11 +340,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               ? null
                               : () async {
                                   final otp = _buildOtpCode();
-                                  if (otp.length != 4) {
+                                  if (otp.length != 6) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
                                         content: Text(
-                                          'Veuillez entrer les 4 chiffres du code OTP.',
+                                          'Veuillez entrer les 6 chiffres du code OTP.',
                                         ),
                                         backgroundColor: Colors.red,
                                       ),

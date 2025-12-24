@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:frontend_transactional_engine/features/wallet/application/wallet_controller.dart';
+import 'package:frontend_transactional_engine/features/auth/application/auth_flow_controller.dart';
+import 'package:frontend_transactional_engine/features/wallet/data/wallet_service.dart';
+import 'package:frontend_transactional_engine/features/wallet/domain/contact.dart';
 
 class TransferScreen extends StatefulWidget {
   const TransferScreen({super.key});
@@ -16,14 +21,46 @@ class _TransferScreenState extends State<TransferScreen> {
   bool _isPhoneValid = false;
   bool _isAmountValid = false;
   String _selectedContact = '';
-  
-  // Contacts favoris simulés
-  final List<Map<String, String>> _favoriteContacts = [
-    {'name': 'Aminata Diop', 'phone': '771234567', 'initial': 'A'},
-    {'name': 'Moussa Sow', 'phone': '775551234', 'initial': 'M'},
-    {'name': 'Fatou Kane', 'phone': '778889999', 'initial': 'F'},
-    {'name': 'Ibrahima Fall', 'phone': '776667777', 'initial': 'I'},
-  ];
+  double _maxAmount = 0.0;
+  List<Contact> _contacts = [];
+  bool _isLoadingContacts = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserCompte();
+    _loadContacts();
+  }
+
+  Future<void> _loadUserCompte() async {
+    final authController = context.read<AuthFlowController>();
+    final walletController = context.read<WalletController>();
+    
+    final phoneNumber = authController.storedPhoneNumber;
+    if (phoneNumber != null) {
+      await walletController.loadCompte(phoneNumber);
+      setState(() {
+        _maxAmount = walletController.solde;
+      });
+    }
+  }
+
+  Future<void> _loadContacts() async {
+    final walletService = context.read<WalletService>();
+    final authController = context.read<AuthFlowController>();
+    final currentPhone = authController.storedPhoneNumber;
+    
+    final contacts = await walletService.getAllContacts();
+    
+    setState(() {
+      // Filtrer pour ne pas afficher l'utilisateur connecté dans les contacts
+      _contacts = contacts
+          .where((contact) => contact.telephone != currentPhone)
+          .take(4) // Limiter à 4 contacts favoris
+          .toList();
+      _isLoadingContacts = false;
+    });
+  }
 
   @override
   void dispose() {
@@ -42,15 +79,17 @@ class _TransferScreenState extends State<TransferScreen> {
   void _validateAmount(String value) {
     setState(() {
       final amount = int.tryParse(value.replaceAll(RegExp(r'\s+'), ''));
-      _isAmountValid = amount != null && amount > 0 && amount <= 350250;
+      _isAmountValid = amount != null && amount > 0 && amount <= _maxAmount;
     });
   }
 
-  void _selectContact(String name, String phone) {
+  void _selectContact(Contact contact) {
     setState(() {
-      _selectedContact = name;
-      _phoneController.text = _formatPhone(phone);
-      _validatePhone(phone);
+      _selectedContact = contact.fullName;
+      // Retirer le +221 du numéro pour l'affichage
+      final phoneWithoutPrefix = contact.telephone.replaceFirst('+221', '');
+      _phoneController.text = _formatPhone(phoneWithoutPrefix);
+      _validatePhone(phoneWithoutPrefix);
     });
   }
 
@@ -186,8 +225,10 @@ class _TransferScreenState extends State<TransferScreen> {
     );
   }
 
-  void _processTransfer() {
-    // Simulation du transfert
+  Future<void> _processTransfer() async {
+    final walletController = context.read<WalletController>();
+    
+    // Afficher le loader
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -198,10 +239,93 @@ class _TransferScreenState extends State<TransferScreen> {
       ),
     );
 
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pop(context); // Fermer le loader
+    // Effectuer le transfert réel
+    final phone = '+221' + _phoneController.text.trim().replaceAll(RegExp(r'\s+'), '');
+    final amount = double.parse(_amountController.text.trim().replaceAll(RegExp(r'\s+'), ''));
+    
+    final response = await walletController.effectuerTransfert(
+      montant: amount,
+      phoneRecepteur: phone,
+    );
+
+    if (!mounted) return;
+    Navigator.pop(context); // Fermer le loader
+
+    if (response != null && response.success) {
       _showSuccessDialog();
-    });
+    } else {
+      _showErrorDialog(response?.message ?? 'Erreur lors du transfert');
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF5252).withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline,
+                color: Color(0xFFFF5252),
+                size: 50,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Transfert échoué',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF2D2D2D),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 15,
+                color: Color(0xFF6F6F7C),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF5252),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: const Text(
+                'Fermer',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showSuccessDialog() {
@@ -398,73 +522,88 @@ class _TransferScreenState extends State<TransferScreen> {
                       const SizedBox(height: 14),
                       SizedBox(
                         height: 90,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: _favoriteContacts.length,
-                          itemBuilder: (context, index) {
-                            final contact = _favoriteContacts[index];
-                            final isSelected = _selectedContact == contact['name'];
-                            
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 16),
-                              child: InkWell(
-                                onTap: () => _selectContact(
-                                  contact['name']!,
-                                  contact['phone']!,
+                        child: _isLoadingContacts
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Color(0xFF0D47FF),
+                                  ),
                                 ),
-                                child: Column(
-                                  children: [
-                                    Container(
-                                      width: 60,
-                                      height: 60,
-                                      decoration: BoxDecoration(
-                                        gradient: isSelected
-                                            ? const LinearGradient(
-                                                colors: [
-                                                  Color(0xFF0D47FF),
-                                                  Color(0xFF4C6DFF)
-                                                ],
-                                              )
-                                            : null,
-                                        color: isSelected
-                                            ? null
-                                            : const Color(0xFFEAF0FF),
-                                        borderRadius: BorderRadius.circular(18),
-                                        border: isSelected
-                                            ? Border.all(
-                                                color: Colors.white,
-                                                width: 2,
-                                              )
-                                            : null,
+                              )
+                            : _contacts.isEmpty
+                                ? const Center(
+                                    child: Text(
+                                      'Aucun contact disponible',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Color(0xFF8A8A9E),
                                       ),
-                                      child: Center(
-                                        child: Text(
-                                          contact['initial']!,
-                                          style: TextStyle(
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.w700,
-                                            color: isSelected
-                                                ? Colors.white
-                                                : const Color(0xFF0D47FF),
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: _contacts.length,
+                                    itemBuilder: (context, index) {
+                                      final contact = _contacts[index];
+                                      final isSelected = _selectedContact == contact.fullName;
+                                      
+                                      return Padding(
+                                        padding: const EdgeInsets.only(right: 16),
+                                        child: InkWell(
+                                          onTap: () => _selectContact(contact),
+                                          child: Column(
+                                            children: [
+                                              Container(
+                                                width: 60,
+                                                height: 60,
+                                                decoration: BoxDecoration(
+                                                  gradient: isSelected
+                                                      ? const LinearGradient(
+                                                          colors: [
+                                                            Color(0xFF0D47FF),
+                                                            Color(0xFF4C6DFF)
+                                                          ],
+                                                        )
+                                                      : null,
+                                                  color: isSelected
+                                                      ? null
+                                                      : const Color(0xFFEAF0FF),
+                                                  borderRadius: BorderRadius.circular(18),
+                                                  border: isSelected
+                                                      ? Border.all(
+                                                          color: Colors.white,
+                                                          width: 2,
+                                                        )
+                                                      : null,
+                                                ),
+                                                child: Center(
+                                                  child: Text(
+                                                    contact.initial,
+                                                    style: TextStyle(
+                                                      fontSize: 24,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: isSelected
+                                                          ? Colors.white
+                                                          : const Color(0xFF0D47FF),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                contact.prenom,
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: Color(0xFF6F6F7C),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      contact['name']!.split(' ')[0],
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF6F6F7C),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                                      );
+                                    },
+                                  ),
                       ),
                       
                       const SizedBox(height: 28),
@@ -629,13 +768,18 @@ class _TransferScreenState extends State<TransferScreen> {
                                     color: Color(0xFF8A8A9E),
                                   ),
                                 ),
-                                const Text(
-                                  '350 250 CFA',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF0D47FF),
-                                  ),
+                                Consumer<WalletController>(
+                                  builder: (context, walletController, child) {
+                                    final solde = walletController.solde;
+                                    return Text(
+                                      '${solde.toStringAsFixed(0)} CFA',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF0D47FF),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ],
                             ),

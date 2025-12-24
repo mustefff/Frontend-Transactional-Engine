@@ -1,13 +1,14 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:frontend_transactional_engine/features/auth/data/mock_auth_service.dart';
+import 'package:frontend_transactional_engine/features/auth/domain/auth_service.dart';
 import 'package:frontend_transactional_engine/features/auth/domain/user_profile.dart';
+import 'package:frontend_transactional_engine/features/auth/data/mock_auth_service.dart';
 
 class AuthFlowController extends ChangeNotifier {
-  AuthFlowController({required MockAuthService authService})
+  AuthFlowController({required AuthService authService})
       : _authService = authService;
 
-  final MockAuthService _authService;
+  final AuthService _authService;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -34,6 +35,29 @@ class AuthFlowController extends ChangeNotifier {
   }
 
   void clearError() => _setError(null);
+
+  Future<bool> checkUserExists(String phoneNumber) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final exists = await _authService.checkUserExists(phoneNumber: phoneNumber);
+      if (exists) {
+        _phoneNumber = phoneNumber;
+        // Récupérer le profil depuis le service
+        _profile = _authService.profile;
+        notifyListeners();
+      }
+      return exists;
+    } on AuthFlowException catch (e) {
+      _setError(e.message);
+      return false;
+    } catch (e) {
+      _setError('Erreur lors de la vérification: ${e.toString()}');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
 
   Future<bool> requestOtp(String phoneNumber) async {
     _setLoading(true);
@@ -75,7 +99,10 @@ class AuthFlowController extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
-      await _authService.completeProfile(profile);
+      await _authService.completeProfile(
+        phoneNumber: _phoneNumber!,
+        profile: profile,
+      );
       _profile = profile;
       return true;
     } on AuthFlowException catch (e) {
@@ -90,7 +117,10 @@ class AuthFlowController extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
-      await _authService.persistPin(pin);
+      await _authService.setPin(
+        phoneNumber: _phoneNumber!,
+        pin: pin,
+      );
       return true;
     } on AuthFlowException catch (e) {
       _setError(e.message);
@@ -104,7 +134,10 @@ class AuthFlowController extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
-      await _authService.loginWithPin(pin);
+      await _authService.verifyPin(
+        phoneNumber: _phoneNumber!,
+        pin: pin,
+      );
       return true;
     } on AuthFlowException catch (e) {
       _setError(e.message);

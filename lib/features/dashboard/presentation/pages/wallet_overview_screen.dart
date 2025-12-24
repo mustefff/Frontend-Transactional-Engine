@@ -4,20 +4,268 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:frontend_transactional_engine/core/routing/app_router.dart';
 import 'package:frontend_transactional_engine/features/auth/application/auth_flow_controller.dart';
+import 'package:frontend_transactional_engine/features/wallet/application/wallet_controller.dart';
+import 'package:frontend_transactional_engine/features/wallet/data/wallet_service.dart';
+import 'package:frontend_transactional_engine/features/wallet/domain/transaction.dart';
 
-class WalletOverviewScreen extends StatelessWidget {
+class WalletOverviewScreen extends StatefulWidget {
   const WalletOverviewScreen({super.key});
+
+  @override
+  State<WalletOverviewScreen> createState() => _WalletOverviewScreenState();
+}
+
+class _WalletOverviewScreenState extends State<WalletOverviewScreen> with WidgetsBindingObserver {
+  List<Transaction> _transactions = [];
+  bool _isLoadingTransactions = true;
+  bool _isBalanceVisible = true;
+
+  @override
+  void initState() {
+    super.initState();
+    print('🔵 initState appelé');
+    WidgetsBinding.instance.addObserver(this);
+    // Charger immédiatement
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadWalletData();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      print('🟢 App resumed - rechargement de l\'historique');
+      _loadWalletData();
+    }
+  }
+  
+  void _showUserDetails(BuildContext context) {
+    final authController = context.read<AuthFlowController>();
+    final profile = authController.profile;
+    final phoneNumber = authController.storedPhoneNumber ?? authController.phoneNumber ?? '';
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D47FF).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.person,
+                      color: Color(0xFF0D47FF),
+                      size: 32,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        profile != null 
+                            ? '${profile.firstName} ${profile.lastName}'
+                            : 'Utilisateur',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1A1C2D),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _formatPhoneForDisplay(phoneNumber),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Color(0xFF6F728C),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                  color: const Color(0xFF9297B5),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
+            _buildDetailItem(Icons.credit_card, 'Compte', 'Portefeuille principal'),
+            _buildDetailItem(Icons.verified_user, 'Statut', 'Vérifié'),
+            _buildDetailItem(Icons.calendar_today, 'Inscrit depuis', 'Décembre 2025'),
+            if (profile != null && profile.nin.isNotEmpty)
+              _buildDetailItem(Icons.badge, 'NIN', profile.nin),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // Ici on pourrait naviguer vers un écran de modification du profil
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Fonctionnalité à venir'),
+                      backgroundColor: Color(0xFF0D47FF),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0D47FF),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  'Modifier le profil',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildDetailItem(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F7FF),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Icon(
+                icon,
+                color: const Color(0xFF0D47FF),
+                size: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF6F728C),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1C2D),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _loadWalletData() async {
+    final authController = context.read<AuthFlowController>();
+    final walletController = context.read<WalletController>();
+    final walletService = context.read<WalletService>();
+    
+    final phoneNumber = authController.storedPhoneNumber;
+    print('📱 Numéro de téléphone: $phoneNumber');
+    
+    if (phoneNumber != null) {
+      await walletController.loadCompte(phoneNumber);
+      
+      // Charger l'historique des transactions
+      print('📎 Chargement de l\'historique...');
+      final transactions = await walletService.getTransactionHistory(phoneNumber);
+      print('✅ ${transactions.length} transactions chargées');
+      
+      if (mounted) {
+        setState(() {
+          _transactions = transactions;
+          _isLoadingTransactions = false;
+        });
+      }
+    }
+  }
 
   String _formatPhone(String phone) {
     if (phone.isEmpty) return '';
-    final buffer = StringBuffer();
-    for (var i = 0; i < phone.length; i++) {
-      buffer.write(phone[i]);
-      if (i.isOdd && i != phone.length - 1) {
-        buffer.write(' ');
+    // Format standard sans espaces pour l'affichage dans le QR code
+    return phone.replaceAll(' ', '');
+  }
+  
+  String _formatPhoneForDisplay(String phone) {
+    if (phone.isEmpty) return '';
+    // Format pour l'affichage à l'écran: +221 77 777 77 33
+    String cleaned = phone.replaceAll(' ', '');
+    if (cleaned.length < 4) return cleaned;
+    
+    // Format international: +221 77 777 77 33
+    if (cleaned.startsWith('+')) {
+      // Code pays (ex: +221)
+      String countryCode = cleaned.substring(0, 4);
+      String rest = cleaned.substring(4);
+      
+      // Grouper le reste par 2 chiffres
+      final buffer = StringBuffer(countryCode + ' ');
+      for (int i = 0; i < rest.length; i += 2) {
+        if (i + 2 <= rest.length) {
+          buffer.write(rest.substring(i, i + 2));
+        } else {
+          buffer.write(rest.substring(i));
+        }
+        if (i + 2 < rest.length) buffer.write(' ');
       }
+      return buffer.toString();
     }
-    return buffer.toString();
+    
+    return cleaned;
   }
 
   @override
@@ -50,42 +298,34 @@ class WalletOverviewScreen extends StatelessWidget {
         icon: Icons.phone_android_rounded,
         background: const Color(0xFFFF9800),
       ),
-      _QuickActionData(
-        label: 'Favoris',
-        icon: Icons.star_rounded,
-        background: const Color(0xFF00BCD4),
-      ),
+      // Icône favoris supprimée
     ];
 
-    final transactions = [
-      const _TransactionData(
-        title: 'Paiement Facture Senelec',
-        subtitle: '11 Nov • 10:12',
-        amount: '-12 500 CFA',
-        isDebit: true,
-      ),
-      const _TransactionData(
-        title: 'Transfert reçu - A. Diop',
-        subtitle: '10 Nov • 18:45',
-        amount: '+75 000 CFA',
-        isDebit: false,
-      ),
-      const _TransactionData(
-        title: 'Achat Crédit Orange',
-        subtitle: '09 Nov • 08:21',
-        amount: '-2 500 CFA',
-        isDebit: true,
-      ),
-      const _TransactionData(
-        title: 'Cash-in Agence Plateau',
-        subtitle: '08 Nov • 16:05',
-        amount: '+150 000 CFA',
-        isDebit: false,
-      ),
-    ];
+    // Convertir les vraies transactions en _TransactionData pour l'affichage
+    final transactions = _transactions.map((t) {
+      final dateStr = t.date.length >= 16 ? t.date.substring(0, 16).replaceAll('T', ' ') : t.date;
+      final subtitle = t.autreTelephone.isNotEmpty 
+          ? '${t.autreTelephone} • $dateStr'
+          : dateStr;
+      
+      return _TransactionData(
+        title: t.title,
+        subtitle: subtitle,
+        amount: t.formattedAmount,
+        isDebit: t.isDebit,
+      );
+    }).toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FF),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          print('🔄 Bouton refresh appuyé');
+          _loadWalletData();
+        },
+        child: const Icon(Icons.refresh),
+        tooltip: 'Recharger l\'historique',
+      ),
       body: SafeArea(
         child: Stack(
           children: [
@@ -149,18 +389,21 @@ class WalletOverviewScreen extends StatelessWidget {
   Widget _buildHeader(String greeting, String phoneNumber) {
     return Row(
       children: [
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            color: Colors.white.withOpacity(0.18),
-          ),
-          child: const Center(
-            child: Icon(
-              Icons.person,
-              color: Colors.white,
-              size: 28,
+        GestureDetector(
+          onTap: () => _showUserDetails(context),
+          child: Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              color: Colors.white.withOpacity(0.18),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.person,
+                color: Colors.white,
+                size: 28,
+              ),
             ),
           ),
         ),
@@ -284,21 +527,36 @@ class WalletOverviewScreen extends StatelessWidget {
                     ),
                     const Spacer(),
                     IconButton(
-                      onPressed: () {},
-                      icon: const Icon(Icons.remove_red_eye_outlined),
+                      onPressed: () {
+                        setState(() {
+                          _isBalanceVisible = !_isBalanceVisible;
+                        });
+                      },
+                      icon: Icon(
+                        _isBalanceVisible 
+                            ? Icons.remove_red_eye_outlined 
+                            : Icons.visibility_off_outlined,
+                      ),
                       color: const Color(0xFF9297B5),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  '350 250 CFA',
-                  style: TextStyle(
-                    color: Color(0xFF1A1C2D),
-                    fontSize: 34,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                  ),
+                Consumer<WalletController>(
+                  builder: (context, walletController, child) {
+                    final solde = walletController.solde;
+                    return Text(
+                      _isBalanceVisible 
+                          ? '${solde.toStringAsFixed(0)} CFA'
+                          : '•••••• CFA',
+                      style: const TextStyle(
+                        color: Color(0xFF1A1C2D),
+                        fontSize: 34,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -321,36 +579,7 @@ class WalletOverviewScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 22),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _BalanceMeta(
-                        label: 'Entrées',
-                        value: '+75 000 CFA',
-                        valueColor: const Color(0xFF1A1C2D),
-                        icon: Icons.north_east_rounded,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _BalanceMeta(
-                        label: 'Sorties',
-                        value: '−32 700 CFA',
-                        valueColor: const Color(0xFF1A1C2D),
-                        icon: Icons.south_west_rounded,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _BalanceMeta(
-                        label: 'Frais',
-                        value: '1 050 CFA',
-                        valueColor: const Color(0xFF1A1C2D),
-                        icon: Icons.receipt_long_rounded,
-                      ),
-                    ),
-                  ],
-                ),
+                // Statistiques supprimées
               ],
             ),
           ),
@@ -360,9 +589,17 @@ class WalletOverviewScreen extends StatelessWidget {
   }
 
   Widget _buildQrCard(BuildContext context, String phoneNumber) {
+    // Créer des données JSON structurées pour le QR code - format pour transfert
+    // Format: {"type": "transfer", "phone": "+221...", "name": "Nom"}
+    final authController = context.read<AuthFlowController>();
+    final profile = authController.profile;
+    final userName = profile != null 
+        ? '${profile.firstName} ${profile.lastName}'
+        : 'Utilisateur';
+    
     final qrData = phoneNumber.isNotEmpty
-        ? 'wallet:$phoneNumber'
-        : 'wallet:temp-${DateTime.now().millisecondsSinceEpoch}';
+        ? '{"type":"transfer","phone":"$phoneNumber","name":"$userName"}'
+        : '{"type":"transfer","temp":true}';
 
     return Container(
       width: double.infinity,
@@ -401,7 +638,7 @@ class WalletOverviewScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Text(
-                      'Carte dynamique',
+                      'Code de transfert',
                       style: TextStyle(
                         color: Color(0xFF0D47FF),
                         fontWeight: FontWeight.w600,
@@ -410,7 +647,18 @@ class WalletOverviewScreen extends StatelessWidget {
                   ),
                   const Spacer(),
                   IconButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      // Copier le numéro pour faciliter le transfert
+                      if (phoneNumber.isNotEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Numéro copié pour transfert : ${_formatPhoneForDisplay(phoneNumber)}'),
+                            backgroundColor: const Color(0xFF0D47FF),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    },
                     icon: const Icon(
                       Icons.more_horiz_rounded,
                       color: Color(0xFF0D47FF),
@@ -448,7 +696,7 @@ class WalletOverviewScreen extends StatelessWidget {
                     const SizedBox(height: 16),
                     Text(
                       phoneNumber.isNotEmpty
-                          ? 'Wallet ID : $phoneNumber'
+                          ? 'Wallet ID : ${_formatPhoneForDisplay(phoneNumber)}'
                           : 'Wallet ID temporaire',
                       style: const TextStyle(
                         fontSize: 14,
@@ -471,8 +719,8 @@ class WalletOverviewScreen extends StatelessWidget {
                   Expanded(
                     child: Text(
                       phoneNumber.isNotEmpty
-                          ? 'Présentez ce code pour encaisser ou payer en toute sécurité, comme sur Wave.'
-                          : 'Complétez votre profil pour générer un QR code définitif.',
+                          ? 'Présentez ce code pour recevoir un transfert rapidement.'
+                          : 'Complétez votre profil pour générer un code de transfert.',
                       style: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFF6F6F7C),

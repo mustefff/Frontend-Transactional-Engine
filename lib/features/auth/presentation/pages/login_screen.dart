@@ -263,31 +263,30 @@ class _LoginScreenState extends State<LoginScreen> {
                               ? null
                               : () async {
                                   FocusScope.of(context).unfocus();
-                                  final phone = _phoneController.text
+                                  final phone = '+221' + _phoneController.text
                                       .trim()
                                       .replaceAll(RegExp(r'\s+'), '');
-                                  final success =
-                                      await authController.requestOtp(phone);
-
+                                  
+                                  // Vérifier si l'utilisateur existe
+                                  final exists = await authController.checkUserExists(phone);
+                                  
                                   if (!mounted) return;
-
-                                  if (success) {
+                                  
+                                  if (exists) {
+                                    // L'utilisateur existe, on va à l'écran PIN
                                     Navigator.pushNamed(
                                       context,
-                                      AppRouter.otp,
-                                      arguments: OtpVerificationArgs(
-                                        phoneNumber: phone,
-                                        flowType: OtpFlowType.login,
-                                      ),
+                                      AppRouter.loginPin,
                                     );
-                                  } else if (authController.errorMessage !=
-                                      null) {
+                                  } else {
+                                    // L'utilisateur n'existe pas
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
+                                      const SnackBar(
                                         content: Text(
-                                          authController.errorMessage!,
+                                          'Aucun compte trouvé avec ce numéro. Veuillez vous inscrire.',
                                         ),
                                         backgroundColor: Colors.red,
+                                        duration: Duration(seconds: 4),
                                       ),
                                     );
                                   }
@@ -314,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: const [
                                     Text(
-                                      'Recevoir un code',
+                                      'Continuer',
                                       style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.w600,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:frontend_transactional_engine/core/routing/app_router.dart';
 import 'package:frontend_transactional_engine/features/auth/application/auth_flow_controller.dart';
@@ -15,6 +16,26 @@ class LoginPinScreen extends StatefulWidget {
 class _LoginPinScreenState extends State<LoginPinScreen> {
   final TextEditingController _pinController = TextEditingController();
   bool _isValid = false;
+  String? _savedPhoneNumber;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedPhone();
+  }
+
+  Future<void> _loadSavedPhone() async {
+    final prefs = await SharedPreferences.getInstance();
+    final phone = prefs.getString('user_phone');
+    if (phone != null) {
+      setState(() {
+        _savedPhoneNumber = phone;
+      });
+      // Mettre à jour le controller avec le numéro sauvegardé
+      final authController = context.read<AuthFlowController>();
+      await authController.checkUserExists(phone);
+    }
+  }
 
   @override
   void dispose() {

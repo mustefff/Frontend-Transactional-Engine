@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagramme de Séquence - ECOM-AND-MERCHANT</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        h2 {
+            color: #764ba2;
+            text-align: center;
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+        .mermaid {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 2px solid #e9ecef;
+        }
+        .legend {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+            border-left: 4px solid #667eea;
+        }
+        .legend h3 {
+            color: #667eea;
+            margin-top: 0;
+        }
+        .legend-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+        .phase {
+            font-weight: bold;
+            color: #764ba2;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1> Diagramme de Séquence</h1>
+        <h2>Architecture Microservices - Paiement Marchand</h2>
+        
+        <!-- Phase 0A : Inscription avec OTP -->
+        <h3 style="color: #667eea; margin-top: 30px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 5px solid #ffc107;">
+             Phase 0A : Inscription avec OTP
+        </h3>
+        <div class="mermaid">
+sequenceDiagram
+    participant Client as Client Flutter
+    participant Gateway as API Gateway
+    participant Auth as AUTH-SERVICE
+    participant DB_Auth as PostgreSQL<br/>(AUTH)
+    participant Redis as Redis Cache
+    participant Kafka as Kafka Broker
+    participant Notif as Notification Service
+
+    Note over Client,Notif: Étape 1 : Demande d'OTP
+
+    Client->>+Gateway: 1. POST /auth/request-otp<br/>{phone: "771234567"}
+    Gateway->>+Auth: 2. Forward Request
+    
+    Auth->>Auth: 3. Generate OTP (1234)
+    Auth->>+Redis: 4. Store OTP<br/>(TTL: 5 min)
+    Redis-->>-Auth: OTP Stored
+    
+    Auth->>+Kafka: 5. Publish Event<br/>"otp-requested"<br/>{phone, otp}
+    Kafka-->>-Auth: Event Published
+    
+    Auth-->>-Gateway: 6. OTP Sent ✅
+    Gateway-->>-Client: 7. Check your SMS
+    
+    Kafka->>+Notif: 8. Consume Event<br/>"otp-requested"
+    Notif->>Notif: 9. Send SMS<br/>"Votre code: 1234"
+    Notif-->>-Kafka: SMS Sent ✅
+    
+    Note over Client,Notif: Étape 2 : Vérification OTP
+
+    Client->>+Gateway: 10. POST /auth/verify-otp<br/>{phone, otp: "1234"}
+    Gateway->>+Auth: 11. Forward Request
+    
+    Auth->>+Redis: 12. Get OTP by Phone
+    Redis-->>-Auth: OTP: 1234
+    
+    Auth->>Auth: 13. Compare OTP
+  
+    
+    Auth->>Auth: 14. Create Temp Session
+    Auth-->>-Gateway: 15. OTP Valid ✅<br/>{tempToken}
+    Auth->>+Redis: 16. Delete OTP
+    Redis-->>-Auth: Deleted
+    Gateway-->>-Client: 17. Continue Registration
+    
+    Note over Client,Notif: Étape 3 : Compléter le Profil
+
+    Client->>+Gateway: 18. POST /auth/complete-profile<br/>{firstName, lastName, nin, birthDate}
+    Gateway->>+Auth: 19. Forward + Temp Token
+    
+    Auth->>+DB_Auth: 20. Create User
+    DB_Auth-->>-Auth: User Created
+    
+    Auth->>+DB_Auth: 21. Create Account<br/>(balance: 0)
+    DB_Auth-->>-Auth: Account Created
+    
+    Auth->>+Kafka: 22. Publish Event<br/>"user-registered"
+    Kafka-->>-Auth: Event Published
+    
+    Auth-->>-Gateway: 23. Profile Saved ✅
+    Gateway-->>-Client: 24. Set your PIN
+    
+    Note over Client,Notif: Étape 4 : Définir le PIN
+
+    Client->>+Gateway: 25. POST /auth/set-pin<br/>{pin: "123456"}
+    Gateway->>+Auth: 26. Forward + Temp Token
+    
+    Auth->>Auth: 27. Hash PIN (bcrypt)
+    Auth->>+DB_Auth: 28. Update User<br/>(status: ACTIVE)
+    DB_Auth-->>-Auth: User Activated
+    
+    Auth->>Auth: 29. Generate JWT Token
+    Auth->>+DB_Auth: 30. Create Session
+    DB_Auth-->>-Auth: Session Created
+    
+    Auth-->>-Gateway: 31. Registration Complete<br/>{accessToken, refreshToken}
+    Gateway-->>-Client: 32. Welcome! 🎉
+        </div>
+        
+        <!-- Phase 0B : Connexion -->
+        <h3 style="color: #667eea; margin-top: 30px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 5px solid #ffc107;">
+             Phase 0B : Connexion avec PIN
+        </h3>
+        <div class="mermaid">
+sequenceDiagram
+    participant Client as Client Flutter
+    participant Gateway as API Gateway
+    participant Auth as AUTH-SERVICE
+    participant DB_Auth as PostgreSQL<br/>(AUTH)
+    participant Kafka as Kafka Broker
+    participant History as History Service
+
+    Note over Client,History: Connexion Utilisateur
+
+    Client->>+Gateway: 1. POST /auth/login<br/>{phone: "771234567", pin: "123456"}
+    Gateway->>+Auth: 2. Forward Login Request
+    
+    Auth->>+DB_Auth: 3. Query User by Phone
+    DB_Auth-->>-Auth: User Found
+    
+    Auth->>Auth: 4. Verify PIN (bcrypt)
+    Auth->>Auth: 5. Check Account Status<br/>(ACTIVE/BLOCKED)
+    Auth->>Auth: 6. Check Failed Attempts
+    
+    Auth->>+DB_Auth: 7. Reset Failed Attempts
+    DB_Auth-->>-Auth: Updated
+    
+    Auth->>Auth: 8. Generate JWT Token<br/>(access + refresh)
+    
+    Auth->>+DB_Auth: 9. Create Session
+    DB_Auth-->>-Auth: Session Created
+    
+    Auth->>+Kafka: 10. Publish Event<br/>"user-logged-in"<br/>{userId, phone, timestamp}
+    Kafka-->>-Auth: Event Published
+    
+    Auth-->>-Gateway: 11. Login Success<br/>{accessToken, refreshToken, user}
+    Gateway-->>-Client: 12. Authentication Success ✅
+    
+    Kafka->>+History: 13. Consume Event<br/>"user-logged-in"
+    History->>History: 14. Log Connection<br/>in History DB
+    History-->>-Kafka: Logged ✅
+    
+    Note over Client: Token stocké localement<br/>Utilisé pour toutes les requêtes
+        </div>
+        
+        <!-- Phase 1 -->
+        <h3 style="color: #667eea; margin-top: 30px; padding: 15px; background: #f0f3ff; border-radius: 8px;">
+             Phase 1 : Création du Paiement Marchand
+        </h3>
+        <div class="mermaid">
+sequenceDiagram
+    participant Client as Client Flutter
+    participant Gateway as API Gateway
+    participant Auth as AUTH-SERVICE
+    participant Merchant as MERCHANT-PAYMENT
+    participant DB1 as PostgreSQL<br/>(MERCHANT)
+    participant Kafka as Kafka Broker
+    participant TRX as TRX-ENGINE
+    participant DB2 as PostgreSQL<br/>(TRX)
+    participant History as History Service
+    participant DB3 as PostgreSQL<br/>(History)
+    participant Notif as Notification Service
+
+    Note over Client,Notif: Phase 1: Création du Paiement Marchand
+    
+    Client->>+Gateway: 1. POST /merchants/pay<br/>{merchantId, amount}
+    Gateway->>+Auth: 2. Verify JWT Token
+    Auth->>Auth: Validate Token<br/>Check User Status
+    Auth-->>-Gateway: Token Valid ✅<br/>User: Active
+    Gateway->>+Merchant: 3. Forward Request + User Info
+    
+    Merchant->>Merchant: 4. Create Payment Entity<br/>(status: PENDING)
+    Merchant->>+DB1: 5. Save Payment
+    DB1-->>-Merchant: Payment Saved
+    
+    Merchant->>+Kafka: 6. Publish Event<br/>"merchant-payment-created"
+    Kafka-->>-Merchant: Event Published
+    
+    Merchant-->>-Gateway: 7. Response 202 Accepted<br/>{paymentId, status: PENDING}
+    Gateway-->>-Client: 8. Payment Created<br/>Status: PENDING ⏳
+        </div>
+
+        <!-- Phase 2 -->
+        <h3 style="color: #667eea; margin-top: 30px; padding: 15px; background: #f0f3ff; border-radius: 8px;">
+             Phase 2 : Traitement de la Transaction
+        </h3>
+        <div class="mermaid">
+sequenceDiagram
+    participant Client as Client Flutter
+    participant Gateway as API Gateway
+    participant Auth as AUTH-SERVICE
+    participant Merchant as MERCHANT-PAYMENT
+    participant DB1 as PostgreSQL<br/>(MERCHANT)
+    participant Kafka as Kafka Broker
+    participant TRX as TRX-ENGINE
+    participant DB2 as PostgreSQL<br/>(TRX)
+    participant History as History Service
+    participant DB3 as PostgreSQL<br/>(History)
+    participant Notif as Notification Service
+    
+    Kafka->>+TRX: 9. Consume Event<br/>"merchant-payment-created"
+    
+    TRX->>TRX: 10. Verify Balance
+    TRX->>TRX: 11. Debit Client Account
+    TRX->>TRX: 12. Credit Merchant Account
+    
+    TRX->>+DB2: 13. Save Transaction<br/>(status: SUCCESS)
+    DB2-->>-TRX: Transaction Saved ✅
+    TRX-->>-Kafka: 14. Processing Complete
+        </div>
+
+        <!-- Phase 3 -->
+        <h3 style="color: #667eea; margin-top: 30px; padding: 15px; background: #f0f3ff; border-radius: 8px;">
+             Phase 3 : Historique et Coordination
+        </h3>
+        <div class="mermaid">
+sequenceDiagram
+    participant Client as Client Flutter
+    participant Gateway as API Gateway
+    participant Auth as AUTH-SERVICE
+    participant Merchant as MERCHANT-PAYMENT
+    participant DB1 as PostgreSQL<br/>(MERCHANT)
+    participant Kafka as Kafka Broker
+    participant TRX as TRX-ENGINE
+    participant DB2 as PostgreSQL<br/>(TRX)
+    participant History as History Service
+    participant DB3 as PostgreSQL<br/>(History)
+    participant Notif as Notification Service
+    
+    Kafka->>+History: 15. Consume Event<br/>"merchant-payment-created"
+    
+    History->>+TRX: 16. Check Transaction Status<br/>(via Feign Client)
+    TRX->>DB2: Query Transaction
+    DB2-->>TRX: Transaction: SUCCESS
+    TRX-->>-History: Status: SUCCESS ✅
+    
+    History->>+DB3: 17. Save to History
+    DB3-->>-History: History Saved
+    
+    History->>+Kafka: 18. Publish Event<br/>"transaction-completed"
+    Kafka-->>-History: Event Published
+    History-->>-Kafka: Done
+        </div>
+
+        <!-- Phase 4 -->
+        <h3 style="color: #667eea; margin-top: 30px; padding: 15px; background: #f0f3ff; border-radius: 8px;">
+            Phase 4 : Notifications
+        </h3>
+        <div class="mermaid">
+sequenceDiagram
+    participant Client as Client Flutter
+    participant Gateway as API Gateway
+    participant Auth as AUTH-SERVICE
+    participant Merchant as MERCHANT-PAYMENT
+    participant DB1 as PostgreSQL<br/>(MERCHANT)
+    participant Kafka as Kafka Broker
+    participant TRX as TRX-ENGINE
+    participant DB2 as PostgreSQL<br/>(TRX)
+    participant History as History Service
+    participant DB3 as PostgreSQL<br/>(History)
+    participant Notif as Notification Service
+    
+    Kafka->>+Notif: 19. Consume Event<br/>"transaction-completed"
+    
+    Notif->>Notif: 20. Send SMS to Client 📱
+    Notif->>Notif: 21. Send SMS to Merchant 📱
+    Notif->>Notif: 22. Send Email 📧
+    Notif-->>-Kafka: Notifications Sent ✅
+        </div>
+
+        <!-- Phase 5 -->
+        <h3 style="color: #667eea; margin-top: 30px; padding: 15px; background: #f0f3ff; border-radius: 8px;">
+             Phase 5 : Vérification du Statut
+        </h3>
+        <div class="mermaid">
+sequenceDiagram
+    participant Client as Client Flutter
+    participant Gateway as API Gateway
+    participant Auth as AUTH-SERVICE
+    participant Merchant as MERCHANT-PAYMENT
+    participant DB1 as PostgreSQL<br/>(MERCHANT)
+    participant Kafka as Kafka Broker
+    participant TRX as TRX-ENGINE
+    participant DB2 as PostgreSQL<br/>(TRX)
+    participant History as History Service
+    participant DB3 as PostgreSQL<br/>(History)
+    participant Notif as Notification Service
+    
+    Client->>+Gateway: 23. GET /merchants/payments/{id}<br/>(Polling)
+    Gateway->>+Auth: 24. Verify Token
+    Auth-->>-Gateway: Valid ✅
+    Gateway->>+Merchant: 25. Query Payment
+    Merchant->>+DB1: 26. Get Payment Status
+    DB1-->>-Merchant: Payment: SUCCESS ✅
+    Merchant-->>-Gateway: Payment Details
+    Gateway-->>-Client: 27. Status: SUCCESS ✅
+    
+    Note over Client: 🎉 Paiement Réussi !
+        </div>
+
+        <!-- Phase 6 : E-commerce (Flux Séparé) -->
+        <h3 style="color: #667eea; margin-top: 30px; padding: 15px; background: #e8f5e9; border-radius: 8px; border-left: 5px solid #4caf50;">
+            🛒 Phase 6 : Commande E-commerce (Flux Alternatif)
+        </h3>
+        <div class="mermaid">
+sequenceDiagram
+    participant Client as Client Flutter
+    participant Gateway as API Gateway
+    participant Auth as AUTH-SERVICE
+    participant Ecom as ECOM-SERVICE
+    participant DB_Ecom as PostgreSQL<br/>(ECOM)
+    participant Kafka as Kafka Broker
+    participant TRX as TRX-ENGINE
+    participant DB_TRX as PostgreSQL<br/>(TRX)
+    participant History as History Service
+    participant Notif as Notification Service
+
+    Note over Client,Notif: Étape 1 : Créer une Commande
+
+    Client->>+Gateway: 1. POST /ecom/orders<br/>{products: [...], total: 15000}
+    Gateway->>+Auth: 2. Verify JWT Token
+    Auth-->>-Gateway: Token Valid ✅
+    Gateway->>+Ecom: 3. Forward Request + User Info
+    
+    Ecom->>Ecom: 4. Validate Products<br/>Check Stock
+    Ecom->>+DB_Ecom: 5. Create Order<br/>(status: PENDING)
+    DB_Ecom-->>-Ecom: Order Created
+    
+    Ecom->>+Kafka: 6. Publish Event<br/>"order-created"<br/>{orderId, userId, amount}
+    Kafka-->>-Ecom: Event Published
+    
+    Ecom-->>-Gateway: 7. Order Created<br/>{orderId, status: PENDING}
+    Gateway-->>-Client: 8. Order Confirmation ✅
+    
+    Note over Client,Notif: Étape 2 : Traitement du Paiement
+
+    Kafka->>+TRX: 9. Consume Event<br/>"order-created"
+    
+    TRX->>TRX: 10. Verify Balance
+    TRX->>TRX: 11. Debit Client Account
+    TRX->>TRX: 12. Credit Platform Account
+    
+    TRX->>+DB_TRX: 13. Save Transaction<br/>(type: ECOM, status: SUCCESS)
+    DB_TRX-->>-TRX: Transaction Saved ✅
+    TRX-->>-Kafka: 14. Processing Complete
+    
+    Note over Client,Notif: Étape 3 : Mise à Jour de la Commande
+
+    Kafka->>+History: 15. Consume Event<br/>"order-created"
+    
+    History->>+TRX: 16. Check Payment Status
+    TRX-->>-History: Status: SUCCESS ✅
+    
+    History->>+Kafka: 17. Publish Event<br/>"order-paid"
+    Kafka-->>-History: Event Published
+    
+    Kafka->>+Ecom: 18. Consume Event<br/>"order-paid"
+    
+    Ecom->>+DB_Ecom: 19. Update Order<br/>(status: PAID)
+    DB_Ecom-->>-Ecom: Order Updated
+    
+    Ecom->>Ecom: 20. Prepare Shipment
+    Ecom->>+DB_Ecom: 21. Update Order<br/>(status: PROCESSING)
+    DB_Ecom-->>-Ecom: Order Updated
+    
+    Ecom->>+Kafka: 22. Publish Event<br/>"order-processing"
+    Kafka-->>-Ecom: Event Published
+    Ecom-->>-Kafka: Done
+    
+    Note over Client,Notif: Étape 4 : Notifications
+
+    Kafka->>+Notif: 23. Consume Event<br/>"order-processing"
+    
+    Notif->>Notif: 24. Send SMS to Client 📱<br/>"Commande confirmée"
+    Notif->>Notif: 25. Send Email 📧<br/>Facture + Détails
+    Notif-->>-Kafka: Notifications Sent ✅
+    
+    Note over Client,Notif: Étape 5 : Suivi de Commande
+
+    Client->>+Gateway: 26. GET /ecom/orders/{id}
+    Gateway->>+Auth: 27. Verify Token
+    Auth-->>-Gateway: Valid ✅
+    Gateway->>+Ecom: 28. Query Order
+    Ecom->>+DB_Ecom: 29. Get Order Details
+    DB_Ecom-->>-Ecom: Order: PROCESSING
+    Ecom-->>-Gateway: Order Details
+    Gateway-->>-Client: 30. Status: PROCESSING 📦
+    
+    Note over Client: 🛒 Commande en Préparation !
+        </div>
+
+        <div class="legend">
+            <h3> Légende des Phases</h3>
+            
+            <div class="legend-item" style="background: #fff3cd;">
+                <span class="phase">Phase 0A : Inscription avec OTP (Étapes 1-32)</span><br>
+                <strong>Interaction AUTH-SERVICE ↔ NOTIFICATION-SERVICE :</strong><br>
+                1. Client demande un OTP → AUTH-SERVICE génère le code et le stocke dans Redis<br>
+                2. AUTH-SERVICE publie événement Kafka "otp-requested"<br>
+                3. NOTIFICATION-SERVICE consomme l'événement et envoie le SMS avec l'OTP<br>
+                4. Client vérifie l'OTP, complète son profil et définit son PIN<br>
+                5. AUTH-SERVICE crée l'utilisateur et retourne le JWT token
+            </div>
+            
+            <div class="legend-item" style="background: #fff3cd;">
+                <span class="phase">Phase 0B : Connexion avec PIN (Étapes 1-14)</span><br>
+                Le client s'authentifie avec phone + PIN. AUTH-SERVICE vérifie les credentials, génère un JWT token et publie "user-logged-in". HISTORY-SERVICE enregistre la connexion.
+            </div>
+            
+            <div class="legend-item">
+                <span class="phase">Phase 1 : Création du Paiement Marchand (Étapes 1-8)</span><br>
+                Le client Flutter envoie une requête de paiement marchand via l'API Gateway. AUTH-SERVICE vérifie le token JWT. MERCHANT-PAYMENT-SERVICE crée le paiement avec le statut PENDING et publie un événement Kafka "merchant-payment-created".
+            </div>
+            
+            <div class="legend-item">
+                <span class="phase">Phase 2 : Traitement de la Transaction (Étapes 9-14)</span><br>
+                TRX-ENGINE consomme l'événement, vérifie le solde, effectue le transfert (débit/crédit) et sauvegarde la transaction.
+            </div>
+            
+            <div class="legend-item">
+                <span class="phase">Phase 3 : Historique et Coordination (Étapes 15-18)</span><br>
+                History Service (Équipe 3) vérifie le résultat auprès de TRX-ENGINE, enregistre dans l'historique et publie l'événement "transaction-completed".
+            </div>
+            
+            <div class="legend-item">
+                <span class="phase">Phase 4 : Notifications (Étapes 19-22)</span><br>
+                Notification Service (Équipe 3) envoie les SMS et emails au client et au marchand.
+            </div>
+            
+            <div class="legend-item">
+                <span class="phase">Phase 5 : Vérification du Statut (Étapes 23-27)</span><br>
+                Le client interroge l'API pour obtenir le statut final du paiement marchand (SUCCESS).
+            </div>
+            
+            <div class="legend-item" style="background: #e8f5e9;">
+                <span class="phase">Phase 6 : Commande E-commerce (Étapes 1-30)</span><br>
+                <strong>Flux E-commerce complet :</strong><br>
+                1. Client crée une commande → ECOM-SERVICE valide et publie "order-created"<br>
+                2. TRX-ENGINE traite le paiement (débit client, crédit plateforme)<br>
+                3. HISTORY-SERVICE vérifie et publie "order-paid"<br>
+                4. ECOM-SERVICE met à jour la commande (PAID → PROCESSING)<br>
+                5. NOTIFICATION-SERVICE envoie SMS et Email de confirmation<br>
+                6. Client peut suivre sa commande en temps réel
+            </div>
+        </div>
+
+        <div class="legend">
+            <h3> Points Clés de l'Architecture</h3>
+            
+            <div class="legend-item">
+                ✅ <strong>AUTH-SERVICE</strong> : Gère l'authentification, les tokens JWT, les sessions et la sécurité
+            </div>
+            
+            <div class="legend-item">
+                ✅ <strong>MERCHANT-PAYMENT-SERVICE</strong> : Gère les paiements marchands, QR Code, Kafka Producer
+            </div>
+            
+            <div class="legend-item">
+                ✅ <strong>ECOM-SERVICE</strong> : Gère l'e-commerce (produits, commandes, panier), Kafka Producer + Consumer
+            </div>
+            
+            <div class="legend-item">
+                ✅ <strong>TRX-ENGINE</strong> : Traite TOUTES les transactions (P2P, P2M, E-commerce), Kafka Consumer
+            </div>
+            
+            <div class="legend-item">
+                ✅ <strong>History Service</strong> : Consumer + Producer (coordinateur)
+            </div>
+            
+            <div class="legend-item">
+                ✅ <strong>Notification Service</strong> : Consumer (envoie SMS/Email)
+            </div>
+            
+            <div class="legend-item">
+                ✅ <strong>Communication asynchrone</strong> via Kafka pour le découplage
+            </div>
+            
+            <div class="legend-item">
+                ✅ <strong>Toutes les requêtes</strong> passent par AUTH-SERVICE pour vérification du token
+            </div>
+            
+            <div class="legend-item">
+                ✅ <strong>Équipe 3</strong> gère l'historique et les notifications pour tous
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>🏗️ Architecture Microservices - Équipe 4 - Système de Paiement Mobile</p>
+           
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            sequence: {
+                diagramMarginX: 50,
+                diagramMarginY: 10,
+                actorMargin: 50,
+                width: 150,
+                height: 65,
+                boxMargin: 10,
+                boxTextMargin: 5,
+                noteMargin: 10,
+                messageMargin: 35,
+                mirrorActors: true,
+                bottomMarginAdj: 1,
+                useMaxWidth: true,
+                rightAngles: false,
+                showSequenceNumbers: false
+            }
+        });
+    </script>
+</body>
+</html>

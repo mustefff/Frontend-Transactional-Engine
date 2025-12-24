@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrat d'Interface - Système de Paiement Marchand et E-commerce</title>
+
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { margin: 0; padding: 0; }
+            .container { box-shadow: none; }
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 { 
+            color: #1e40af; 
+            font-size: 2.5em; 
+            margin: 20px 0; 
+            text-align: center; 
+            border-bottom: 3px solid #2563eb; 
+            padding-bottom: 20px; 
+        }
+        
+        h2 { 
+            color: #1e40af; 
+            font-size: 2em; 
+            margin: 40px 0 20px 0; 
+            padding-bottom: 10px; 
+            border-bottom: 2px solid #e5e7eb; 
+        }
+        
+        h3 { 
+            color: #374151; 
+            font-size: 1.5em; 
+            margin: 30px 0 15px 0; 
+            background: #f3f4f6; 
+            padding: 10px 15px; 
+            border-left: 4px solid #2563eb; 
+        }
+        
+        h4 { 
+            color: #4b5563; 
+            font-size: 1.2em; 
+            margin: 20px 0 10px 0; 
+            font-weight: 600; 
+        }
+        
+        p { 
+            margin-bottom: 15px; 
+            color: #4b5563; 
+        }
+        
+        strong { 
+            color: #1f2937; 
+            font-weight: 600; 
+        }
+        
+        code { 
+            background: #f3f4f6; 
+            padding: 2px 6px; 
+            border-radius: 3px; 
+            font-family: 'Courier New', monospace; 
+            font-size: 0.9em; 
+            color: #dc2626; 
+        }
+        
+        pre {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 15px 0;
+            border-left: 4px solid #2563eb;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            line-height: 1.5;
+        }
+        
+        pre code { 
+            background: none; 
+            color: inherit; 
+            padding: 0;
+            font-size: 1em;
+        }
+        
+        ul, ol { 
+            margin: 15px 0 15px 30px; 
+        }
+        
+        li { 
+            margin-bottom: 8px; 
+            color: #4b5563; 
+        }
+        
+        .export-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2563eb;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .export-btn:hover { 
+            background: #1d4ed8; 
+        }
+        
+        hr { 
+            border: none; 
+            border-top: 2px solid #e5e7eb; 
+            margin: 40px 0; 
+        }
+    </style>
+</head>
+<body>
+    <button class="export-btn no-print" onclick="window.print()">📄 Exporter en PDF</button>
+    
+    <div class="container">
+<h1>Contrat d'Interface - Système de Paiement Marchand et E-commerce</h1>
+
+<hr>
+<h2>Table des Matières</h2>
+<ol>
+<li>Architecture & Points d'Accès</li>
+<li>Modèle de Données</li>
+<li>MERCHANT-PAYMENT API</li>
+<li>ECOM-SERVICE API</li>
+<li>TRX-ENGINE API</li>
+<li>Kafka Events</li>
+<li>Sécurité</li>
+</ol>
+<hr>
+<h2>1. Architecture & Points d'Accès</h2>
+<h3>API Gateway (Point d'Entrée Unique)</h3>
+<p><strong>Base URL:</strong> <code>http://localhost:8080</code>  </p>
+<p><strong>Rôle:</strong> Routage des requêtes vers les microservices</p>
+<p><strong>Routes:</strong></p>
+<ul>
+<li><code>/merchant/**</code> → MERCHANT-PAYMENT (8081)</li>
+<li><code>/ecom/**</code> → ECOM-SERVICE (8082)</li>
+<li><code>/transactions/**</code> → TRX-ENGINE (8083)</li>
+</ul>
+<p><strong>Exemple:</strong></p>
+<pre><code>
+# Au lieu d'appeler directement http://localhost:8081/graphql
+# On passe par le Gateway:
+curl -X POST http://localhost:8080/merchant/graphql \
+  -H "Authorization: Bearer TOKEN" \
+  -d '{"query": "..."}'
+</code></pre>
+<h3>Service Registry (Eureka)</h3>
+<p><strong>URL:</strong> <code>http://localhost:8761</code>  </p>
+<p><strong>Rôle:</strong> Découverte et enregistrement des microservices</p>
+<p><strong>Services enregistrés:</strong></p>
+<ul>
+<li><code>MERCHANT-PAYMENT-SERVICE</code> (8081)</li>
+<li><code>ECOM-SERVICE</code> (8082)</li>
+<li><code>TRX-ENGINE</code> (8083)</li>
+</ul>
+<hr>
+<h2>2. Modèle de Données</h2>
+<h3>User</h3>
+<pre><code>
+{
+  "id": "int",
+  "nom": "String",
+  "prenom": "String",
+  "telephone": "String",
+  "password": "String",
+  "nin": "Long"
+}
+</code></pre>
+<h3>Marchand</h3>
+<pre><code>
+{
+  "id": "int",
+  "nomBoutique": "String",
+  "logoBoutique": "String",
+  "userId": "int"
+}
+</code></pre>
+<p><strong>Relations:</strong> 0..1 avec User</p>
+<h3>CompteMarchand</h3>
+<pre><code>
+{
+  "id": "int",
+  "solde": "float",
+  "numCompte": "Long",
+  "codeMarchand": "int",
+  "dateCreation": "date"
+}
+</code></pre>
+<p><strong>Relations:</strong> 1 CompteMarchand lié à 1 Marchand (0..1)</p>
+<h3>Compte</h3>
+<pre><code>
+{
+  "id": "int"
+}
+</code></pre>
+<p><strong>Relations:</strong> 1 Compte lié à 1 User (0..1)</p>
+<h3>Transfert</h3>
+<pre><code>
+{
+  "id": "int",
+  "montantTransfert": "float",
+  "dateTransfert": "date"
+}
+</code></pre>
+<p><strong>Relations:</strong> 0..* avec Details_Transaction</p>
+<h3>Details_Transaction</h3>
+<pre><code>
+{
+  "id": "int"
+}
+</code></pre>
+<p><strong>Relations:</strong> </p>
+<ul>
+<li>Lié à 1 Transfert (0..*)</li>
+<li>Lié à 2 Comptes (débit et crédit)</li>
+</ul>
+<hr>
+<h2>3. MERCHANT-PAYMENT API</h2>
+<p><strong>Base URL:</strong> <code>http://localhost:8081/graphql</code>  </p>
+<p><strong>Protocole:</strong> GraphQL  </p>
+<p><strong>Auth:</strong> JWT Bearer Token</p>
+<h3>API 3.1 : Créer un Paiement Marchand</h3>
+<p><strong>Nom:</strong> <code>createMerchantPayment</code>  </p>
+<p><strong>Méthode:</strong> POST  </p>
+<p><strong>Type:</strong> GraphQL Mutation</p>
+<p><strong>Requête:</strong></p>
+<pre><code>
+mutation {
+  createMerchantPayment(input: {
+    merchantId: "merchant-123"
+    userId: "user-456"
+    amount: 5000.0
+    currency: "XOF"
+  }) {
+    id
+    status
+    reference
+  }
+}
+</code></pre>
+<p><strong>Réponse 200:</strong></p>
+<pre><code>
+{
+  "data": {
+    "createMerchantPayment": {
+      "id": "payment-789",
+      "status": "PENDING",
+      "reference": "MPY-20251123-789"
+    }
+  }
+}
+</code></pre>
+<p><strong>Erreur 409 (Solde insuffisant):</strong></p>
+<pre><code>
+{
+  "errors": [{
+    "code": "INSUFFICIENT_BALANCE",
+    "message": "Solde insuffisant",
+    "required": 5000.0,
+    "available": 2000.0
+  }]
+}
+</code></pre>
+<p><strong>Statuts HTTP:</strong></p>
+<ul>
+<li>200: Succès</li>
+<li>400: Requête invalide</li>
+<li>401: Non authentifié</li>
+<li>409: Solde insuffisant</li>
+<li>500: Erreur serveur</li>
+</ul>
+<p><strong>Sécurité:</strong> JWT Bearer Token (Keycloak)</p>
+<p><strong>Exemple cURL:</strong></p>
+<pre><code>
+curl -X POST http://localhost:8081/graphql \
+  -H "Authorization: Bearer TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "mutation { createMerchantPayment(...) { id } }"}'
+</code></pre>
+<hr>
+<h3>API 3.2 : Lister les Paiements</h3>
+<p><strong>Nom:</strong> <code>merchantPayments</code>  </p>
+<p><strong>Méthode:</strong> POST  </p>
+<p><strong>Type:</strong> GraphQL Query</p>
+<p><strong>Requête:</strong></p>
+<pre><code>
+query {
+  merchantPayments(merchantId: "merchant-123", page: 1, limit: 20) {
+    nodes {
+      id
+      amount
+      status
+      createdAt
+    }
+    totalCount
+  }
+}
+</code></pre>
+<p><strong>Réponse 200:</strong></p>
+<pre><code>
+{
+  "data": {
+    "merchantPayments": {
+      "nodes": [
+        {
+          "id": "payment-789",
+          "amount": 5000.0,
+          "status": "SUCCESS",
+          "createdAt": "2025-11-23T14:40:00Z"
+        }
+      ],
+      "totalCount": 45
+    }
+  }
+}
+</code></pre>
+<hr>
+<h3>API 3.3 : Créer un Compte Marchand</h3>
+<p><strong>Nom:</strong> <code>createMerchant</code>  </p>
+<p><strong>Méthode:</strong> POST  </p>
+<p><strong>Type:</strong> GraphQL Mutation</p>
+<p><strong>Requête:</strong></p>
+<pre><code>
+mutation {
+  createMerchant(input: {
+    name: "Boutique Dakar"
+    email: "contact@boutique.sn"
+    phone: "+221771234567"
+  }) {
+    id
+    name
+    qrCode
+  }
+}
+</code></pre>
+<p><strong>Réponse 200:</strong></p>
+<pre><code>
+{
+  "data": {
+    "createMerchant": {
+      "id": "merchant-123",
+      "name": "Boutique Dakar",
+      "qrCode": "MERCH-QR-123"
+    }
+  }
+}
+</code></pre>
+<hr>
+<h2>4. ECOM-SERVICE API (Paiement Marchand)</h2>
+<p><strong>Base URL:</strong> <code>http://localhost:8082/graphql</code>  </p>
+<p><strong>Protocole:</strong> GraphQL  </p>
+<p><strong>Auth:</strong> JWT Bearer Token</p>
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li>Client : Payer marchand (le frontend décode le QR code et envoie merchantId + amount)</li>
+<li>Commercant : Consulter paiement / Rembourser paiement</li>
+</ul>
+<h3>API 4.1 : Payer Marchand (Client)</h3>
+<p><strong>Nom:</strong> <code>payerMarchand</code>  </p>
+<p><strong>Méthode:</strong> POST  </p>
+<p><strong>Type:</strong> GraphQL Mutation</p>
+<p><strong>Requête:</strong></p>
+<pre><code>
+mutation {
+  payerMarchand(input: {
+    userId: "user-456"
+    merchantId: "merchant-123"
+    amount: 5000.0
+    currency: "XOF"
+    paymentMethod: "QR_CODE"
+  }) {
+    id
+    status
+    reference
+    createdAt
+  }
+}
+</code></pre>
+<p><strong>Réponse 200:</strong></p>
+<pre><code>
+{
+  "data": {
+    "payerMarchand": {
+      "id": "payment-789",
+      "status": "SUCCESS",
+      "reference": "PAY-20251123-789",
+      "createdAt": "2025-11-23T14:40:00Z"
+    }
+  }
+}
+</code></pre>
+<p><strong>Erreur 409 (Solde insuffisant):</strong></p>
+<pre><code>
+{
+  "errors": [{
+    "code": "INSUFFICIENT_BALANCE",
+    "message": "Solde insuffisant",
+    "required": 5000.0,
+    "available": 2000.0
+  }]
+}
+</code></pre>
+<p><strong>Statuts HTTP:</strong></p>
+<ul>
+<li>200: Succès</li>
+<li>400: Requête invalide</li>
+<li>401: Non authentifié</li>
+<li>404: Marchand introuvable</li>
+<li>409: Solde insuffisant</li>
+</ul>
+<p><strong>Sécurité:</strong> JWT Bearer Token + S'authentifier (include)</p>
+<p><strong>Note:</strong> Le frontend scanne le QR code et extrait <code>merchantId</code> et <code>amount</code>, puis appelle cette API.</p>
+<hr>
+<h3>API 4.2 : Consulter Paiement (Commercant)</h3>
+<p><strong>Nom:</strong> <code>consulterPaiement</code>  </p>
+<p><strong>Méthode:</strong> POST  </p>
+<p><strong>Type:</strong> GraphQL Query</p>
+<p><strong>Requête:</strong></p>
+<pre><code>
+query {
+  consulterPaiement(merchantId: "merchant-123", page: 1, limit: 20) {
+    nodes {
+      id
+      userId
+      amount
+      status
+      createdAt
+    }
+    totalCount
+  }
+}
+</code></pre>
+<p><strong>Réponse 200:</strong></p>
+<pre><code>
+{
+  "data": {
+    "consulterPaiement": {
+      "nodes": [
+        {
+          "id": "payment-789",
+          "userId": "user-456",
+          "amount": 5000.0,
+          "status": "SUCCESS",
+          "createdAt": "2025-11-23T14:40:00Z"
+        }
+      ],
+      "totalCount": 45
+    }
+  }
+}
+</code></pre>
+<p><strong>Statuts HTTP:</strong></p>
+<ul>
+<li>200: Succès</li>
+<li>401: Non authentifié</li>
+<li>403: Non autorisé (pas le bon marchand)</li>
+</ul>
+<p><strong>Sécurité:</strong> JWT Bearer Token + S'authentifier (include)</p>
+<hr>
+<h3>API 4.3 : Rembourser Paiement (Commercant)</h3>
+<p><strong>Nom:</strong> <code>rembourserPaiement</code>  </p>
+<p><strong>Méthode:</strong> POST  </p>
+<p><strong>Type:</strong> GraphQL Mutation</p>
+<p><strong>Requête:</strong></p>
+<pre><code>
+mutation {
+  rembourserPaiement(input: {
+    paymentId: "payment-789"
+    merchantId: "merchant-123"
+    reason: "Produit défectueux"
+  }) {
+    id
+    status
+    refundAmount
+    refundedAt
+  }
+}
+</code></pre>
+<p><strong>Réponse 200:</strong></p>
+<pre><code>
+{
+  "data": {
+    "rembourserPaiement": {
+      "id": "refund-456",
+      "status": "REFUNDED",
+      "refundAmount": 5000.0,
+      "refundedAt": "2025-11-23T15:00:00Z"
+    }
+  }
+}
+</code></pre>
+<p><strong>Erreur 409 (Paiement déjà remboursé):</strong></p>
+<pre><code>
+{
+  "errors": [{
+    "code": "ALREADY_REFUNDED",
+    "message": "Ce paiement a déjà été remboursé",
+    "paymentId": "payment-789"
+  }]
+}
+</code></pre>
+<p><strong>Statuts HTTP:</strong></p>
+<ul>
+<li>200: Succès</li>
+<li>401: Non authentifié</li>
+<li>403: Non autorisé</li>
+<li>404: Paiement introuvable</li>
+<li>409: Déjà remboursé</li>
+</ul>
+<p><strong>Sécurité:</strong> JWT Bearer Token + S'authentifier (include)</p>
+<hr>
+<h2>5. TRX-ENGINE API</h2>
+<p><strong>Base URL:</strong> <code>http://localhost:8083/api</code>  </p>
+<p><strong>Protocole:</strong> REST  </p>
+<p><strong>Auth:</strong> JWT Bearer Token</p>
+<h3>API 5.1 : Consulter le Solde</h3>
+<p><strong>URL:</strong> <code>GET /api/users/{userId}/balance</code>  </p>
+<p><strong>Méthode:</strong> GET</p>
+<p><strong>Headers:</strong></p>
+<pre><code>
+Authorization: Bearer &lt;JWT_TOKEN&gt;
+</code></pre>
+<p><strong>Réponse 200:</strong></p>
+<pre><code>
+{
+  "userId": "user-456",
+  "balance": 50000.0,
+  "currency": "XOF"
+}
+</code></pre>
+<p><strong>Statuts HTTP:</strong></p>
+<ul>
+<li>200: Succès</li>
+<li>401: Non authentifié</li>
+<li>404: Utilisateur introuvable</li>
+</ul>
+<p><strong>Exemple cURL:</strong></p>
+<pre><code>
+curl -X GET http://localhost:8083/api/users/user-456/balance \
+  -H "Authorization: Bearer TOKEN"
+</code></pre>
+<hr>
+<h3>API 5.2 : Créer un Transfert P2P</h3>
+<p><strong>URL:</strong> <code>POST /api/transfers</code>  </p>
+<p><strong>Méthode:</strong> POST</p>
+<p><strong>Headers:</strong></p>
+<pre><code>
+Authorization: Bearer &lt;JWT_TOKEN&gt;
+Content-Type: application/json
+</code></pre>
+<p><strong>Requête:</strong></p>
+<pre><code>
+{
+  "compteDebitId": "compte-456",
+  "compteCreditId": "compte-789",
+  "montantTransfert": 10000.0,
+  "currency": "XOF"
+}
+</code></pre>
+<p><strong>Réponse 201:</strong></p>
+<pre><code>
+{
+  "id": "transfert-123",
+  "montantTransfert": 10000.0,
+  "dateTransfert": "2025-11-23T14:40:00Z",
+  "status": "SUCCESS"
+}
+</code></pre>
+<p><strong>Erreur 409 (Solde insuffisant):</strong></p>
+<pre><code>
+{
+  "status": 409,
+  "error": "Conflict",
+  "message": "Solde insuffisant",
+  "details": {
+    "code": "INSUFFICIENT_BALANCE",
+    "required": 10000.0,
+    "available": 5000.0
+  }
+}
+</code></pre>
+<p><strong>Statuts HTTP:</strong></p>
+<ul>
+<li>201: Créé avec succès</li>
+<li>400: Requête invalide</li>
+<li>401: Non authentifié</li>
+<li>409: Solde insuffisant</li>
+</ul>
+<hr>
+<h3>API 5.3 : Historique des Transactions</h3>
+<p><strong>URL:</strong> <code>GET /api/users/{userId}/transactions</code>  </p>
+<p><strong>Méthode:</strong> GET</p>
+<p><strong>Query Parameters:</strong></p>
+<ul>
+<li>page: int (default: 0)</li>
+<li>size: int (default: 20)</li>
+<li>type: MERCHANT_PAYMENT | P2P_TRANSFER | ALL</li>
+</ul>
+<p><strong>Réponse 200:</strong></p>
+<pre><code>
+{
+  "content": [
+    {
+      "id": "txn-456",
+      "type": "MERCHANT_PAYMENT",
+      "amount": 5000.0,
+      "status": "SUCCESS",
+      "createdAt": "2025-11-23T14:40:00Z"
+    }
+  ],
+  "totalElements": 120,
+  "totalPages": 6
+}
+</code></pre>
+<hr>
+<h2>6. Kafka Events</h2>
+<h3>Event 6.1 : merchant-payment-created</h3>
+<p><strong>Topic:</strong> <code>merchant-payment-created</code>  </p>
+<p><strong>Producer:</strong> MERCHANT-PAYMENT  </p>
+<p><strong>Consumer:</strong> TRX-ENGINE</p>
+<p><strong>Payload:</strong></p>
+<pre><code>
+{
+  "paymentId": "payment-789",
+  "merchantId": "merchant-123",
+  "userId": "user-456",
+  "amount": 5000.0,
+  "currency": "XOF",
+  "timestamp": "2025-11-23T14:40:00Z"
+}
+</code></pre>
+<p><strong>Action:</strong> TRX-ENGINE traite le paiement et débite le compte utilisateur</p>
+<hr>
+<h3>Event 6.2 : payment-ecom-created</h3>
+<p><strong>Topic:</strong> <code>payment-ecom-created</code>  </p>
+<p><strong>Producer:</strong> ECOM-SERVICE  </p>
+<p><strong>Consumer:</strong> TRX-ENGINE</p>
+<p><strong>Payload:</strong></p>
+<pre><code>
+{
+  "paymentId": "payment-456",
+  "merchantId": "merchant-123",
+  "userId": "user-456",
+  "amount": 5000.0,
+  "currency": "XOF",
+  "paymentMethod": "QR_CODE",
+  "timestamp": "2025-11-23T15:00:00Z"
+}
+</code></pre>
+<p><strong>Action:</strong> TRX-ENGINE traite le paiement marchand (débite client, crédite marchand)</p>
+<hr>
+<h3>Event 6.3 : payment-ecom-completed</h3>
+<p><strong>Topic:</strong> <code>payment-ecom-completed</code>  </p>
+<p><strong>Producer:</strong> TRX-ENGINE  </p>
+<p><strong>Consumer:</strong> ECOM-SERVICE</p>
+<p><strong>Payload:</strong></p>
+<pre><code>
+{
+  "paymentId": "payment-456",
+  "transactionId": "txn-789",
+  "status": "SUCCESS",
+  "timestamp": "2025-11-23T15:02:00Z"
+}
+</code></pre>
+<p><strong>Action:</strong> ECOM-SERVICE met à jour le statut du paiement (PENDING → SUCCESS)</p>
+<hr>
+<h3>Event 6.4 : transaction-completed</h3>
+<p><strong>Topic:</strong> <code>transaction-completed</code>  </p>
+<p><strong>Producer:</strong> TRX-ENGINE  </p>
+<p><strong>Consumer:</strong> HISTORY-SERVICE, NOTIFICATION-SERVICE</p>
+<p><strong>Payload:</strong></p>
+<pre><code>
+{
+  "transactionId": "txn-456",
+  "userId": "user-456",
+  "merchantId": "merchant-123",
+  "type": "MERCHANT_PAYMENT",
+  "amount": 5000.0,
+  "status": "SUCCESS",
+  "timestamp": "2025-11-23T14:40:00Z"
+}
+</code></pre>
+<p><strong>Actions:</strong></p>
+<ul>
+<li><strong>HISTORY-SERVICE</strong> : Enregistre la transaction dans l'historique</li>
+<li><strong>NOTIFICATION-SERVICE</strong> : Envoie une notification à l'utilisateur (SMS, Push)</li>
+</ul>
+<hr>
+<h3>Event 6.5 : p2p-transfer-created</h3>
+<p><strong>Topic:</strong> <code>p2p-transfer-created</code>  </p>
+<p><strong>Producer:</strong> TRX-ENGINE  </p>
+<p><strong>Consumer:</strong> HISTORY-SERVICE, NOTIFICATION-SERVICE</p>
+<p><strong>Payload:</strong></p>
+<pre><code>
+{
+  "transfertId": "transfert-123",
+  "compteDebitId": "compte-456",
+  "compteCreditId": "compte-789",
+  "montantTransfert": 10000.0,
+  "dateTransfert": "2025-11-23T16:00:00Z",
+  "status": "SUCCESS"
+}
+</code></pre>
+<p><strong>Actions:</strong></p>
+<ul>
+<li><strong>HISTORY-SERVICE</strong> : Enregistre le transfert P2P dans l'historique</li>
+<li><strong>NOTIFICATION-SERVICE</strong> : Envoie une notification aux 2 utilisateurs (émetteur et récepteur)</li>
+</ul>
+<hr>
+<h3>Event 6.6 : user-registered</h3>
+<p><strong>Topic:</strong> <code>user-registered</code>  </p>
+<p><strong>Producer:</strong> AUTH-SERVICE  </p>
+<p><strong>Consumer:</strong> NOTIFICATION-SERVICE</p>
+<p><strong>Payload:</strong></p>
+<pre><code>
+{
+  "userId": "user-456",
+  "nom": "Diaw",
+  "prenom": "Pape",
+  "telephone": "+221771234567",
+  "email": "pape@example.com",
+  "timestamp": "2025-11-23T10:00:00Z"
+}
+</code></pre>
+<p><strong>Action:</strong> NOTIFICATION-SERVICE envoie un SMS/Email de bienvenue</p>
+<hr>
+<h3>Event 6.7 : otp-generated</h3>
+<p><strong>Topic:</strong> <code>otp-generated</code>  </p>
+<p><strong>Producer:</strong> AUTH-SERVICE  </p>
+<p><strong>Consumer:</strong> NOTIFICATION-SERVICE</p>
+<p><strong>Payload:</strong></p>
+<pre><code>
+{
+  "userId": "user-456",
+  "telephone": "+221771234567",
+  "otpCode": "123456",
+  "expiresAt": "2025-11-23T10:05:00Z",
+  "purpose": "LOGIN"
+}
+</code></pre>
+<p><strong>Action:</strong> NOTIFICATION-SERVICE envoie le code OTP par SMS</p>
+<p><strong>Purposes possibles:</strong></p>
+<ul>
+<li><code>LOGIN</code> : Connexion</li>
+<li><code>REGISTRATION</code> : Inscription</li>
+<li><code>PASSWORD_RESET</code> : Réinitialisation mot de passe</li>
+<li><code>TRANSACTION_CONFIRM</code> : Confirmation de transaction</li>
+</ul>
+<hr>
+<h3>Event 6.8 : payment-failed</h3>
+<p><strong>Topic:</strong> <code>payment-failed</code>  </p>
+<p><strong>Producer:</strong> TRX-ENGINE  </p>
+<p><strong>Consumer:</strong> ECOM-SERVICE, MERCHANT-PAYMENT, NOTIFICATION-SERVICE</p>
+<p><strong>Payload:</strong></p>
+<pre><code>
+{
+  "paymentId": "payment-456",
+  "userId": "user-456",
+  "merchantId": "merchant-123",
+  "amount": 5000.0,
+  "reason": "INSUFFICIENT_BALANCE",
+  "timestamp": "2025-11-23T14:40:00Z"
+}
+</code></pre>
+<p><strong>Actions:</strong></p>
+<ul>
+<li><strong>ECOM-SERVICE / MERCHANT-PAYMENT</strong> : Met à jour le statut du paiement (PENDING → FAILED)</li>
+<li><strong>NOTIFICATION-SERVICE</strong> : Envoie une notification d'échec à l'utilisateur</li>
+</ul>
+<hr>
+<h2>7. Sécurité</h2>
+<h3>JWT Token</h3>
+<p><strong>Keycloak Configuration:</strong></p>
+<pre><code>
+Host: localhost:9080
+Realm: transactional-engine
+Client ID: gateway-client
+</code></pre>
+<p><strong>Token Endpoint:</strong></p>
+<pre><code>
+POST /realms/transactional-engine/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password
+&amp;username=+221771234567
+&amp;password=123456
+&amp;client_id=gateway-client
+</code></pre>
+<p><strong>Réponse:</strong></p>
+<pre><code>
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expires_in": 3600,
+  "token_type": "Bearer"
+}
+</code></pre>
+<h3>Headers de Sécurité</h3>
+<pre><code>
+Authorization: Bearer &lt;JWT_TOKEN&gt;
+Content-Type: application/json
+</code></pre>
+<h3>Codes d'Erreur</h3>
+<p><strong>Code | Description</strong></p>
+<p>200 | Succès</p>
+<p>201 | Créé</p>
+<p>400 | Requête invalide</p>
+<p>401 | Non authentifié</p>
+<p>403 | Non autorisé</p>
+<p>404 | Non trouvé</p>
+<p>409 | Conflit (solde insuffisant, rupture de stock)</p>
+<p>500 | Erreur serveur</p>
+<h3>Erreurs Métier</h3>
+<p>INSUFFICIENT_BALANCE: Solde insuffisant  </p>
+<p>OUT_OF_STOCK: Produit en rupture de stock  </p>
+<p>INVALID_MERCHANT: Marchand invalide  </p>
+<p>PAYMENT_FAILED: Échec du paiement  </p>
+<p>USER_NOT_FOUND: Utilisateur introuvable</p>
+<hr>
+<h2>Résumé des Services</h2>
+<p><strong>Service | Port | Protocole | Base URL</strong></p>
+<p>API Gateway | 8080 | GraphQL/REST | http://localhost:8080</p>
+<p>MERCHANT-PAYMENT | 8081 | GraphQL | http://localhost:8081/graphql</p>
+<p>ECOM-SERVICE | 8082 | GraphQL | http://localhost:8082/graphql</p>
+<p>TRX-ENGINE | 8083 | REST | http://localhost:8083/api</p>
+<p>Kafka | 9092 | Kafka | localhost:9092</p>
+<p>Redis | 6379 | Redis | localhost:6379</p>
+<p>Keycloak | 9080 | HTTP | http://localhost:9080</p>
+<hr>
+
+    </div>
+</body>
+</html>
